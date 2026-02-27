@@ -2,7 +2,14 @@ from flask import Flask, Response
 import cv2
 
 app = Flask(__name__)
-camera = cv2.VideoCapture(0)
+camera = cv2.VideoCapture(
+    "nvarguscamerasrc ! "
+    "video/x-raw(memory:NVMM), width=1280, height=720, framerate=30/1 ! "
+    "nvvidconv ! video/x-raw, format=BGRx ! "
+    "videoconvert ! video/x-raw, format=BGR ! "
+    "appsink drop=true",
+    cv2.CAP_GSTREAMER
+)
 
 def generate_frames():
     while True:
