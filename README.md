@@ -34,18 +34,31 @@ This project implements a simple global localisation pipeline using ArUco marker
 - `global_localisation/aruco_layout.pdf`  
   Reference layout for the physical placement of ArUco markers in the environment.
 
-## Requirements
+## Environment Setup
 
-Install dependencies with `pip` (Python 3.10+ recommended):
+It is recommended to run this project inside a dedicated Python virtual environment to avoid dependency conflicts with other projects.
+
+From the project root:
 
 ```bash
-pip install opencv-python numpy
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+Once the virtual environment is active, install the dependencies below.
+
+## Requirements
+
+Install dependencies with `pip` (inside your virtual environment, Python 3.10+ recommended):
+
+```bash
+pip install opencv-python numpy flask
 ```
 
 If you need ArUco support via `cv2.aruco` and it is missing from your OpenCV build, you may need to install the contrib package instead:
 
 ```bash
-pip install opencv-contrib-python numpy
+pip install opencv-contrib-python numpy flask
 ```
 
 ## Running the System

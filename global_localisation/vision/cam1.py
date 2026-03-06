@@ -1,11 +1,17 @@
 import cv2
 from vision.detector import ArucoDetector
 from mapping.homography import HomographyMapper
-from config import CAMERA_INDEX
 
 
 def main():
-    cap = cv2.VideoCapture(CAMERA_INDEX)
+    cap = cv2.VideoCapture(
+        "nvarguscamerasrc ! "
+        "video/x-raw(memory:NVMM), width=1280, height=720, framerate=30/1 ! "
+        "nvvidconv ! video/x-raw, format=BGRx ! "
+        "videoconvert ! video/x-raw, format=BGR ! "
+        "appsink drop=true",
+        cv2.CAP_GSTREAMER
+    )
 
     detector = ArucoDetector()
     mapper = HomographyMapper()
