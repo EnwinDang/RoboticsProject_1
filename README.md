@@ -1,3 +1,74 @@
+# Global Robot Localisation using Vision (ROS2 + ArUco)
+
+Vision-based localisation system for multiple robots using ArUco markers and ROS2.
+
+## Features
+
+- Real-time robot detection
+- Homography-based map transformation
+- Robot pose estimation (x, y, theta)
+- ROS2 topic publishing
+
+## Hardware
+
+- Jetson Orin
+- USB Camera
+- Robots with ArUco markers
+
+## Installation
+
+### Environment setup (venv)
+
+From the project root:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+```
+
+### Python packages
+
+```bash
+pip install opencv-python opencv-contrib-python numpy
+```
+
+Note: in most environments you should install **either** `opencv-python` **or** `opencv-contrib-python` (ArUco support is typically in the contrib build).
+
+## Running the system
+
+Terminal 1
+
+```bash
+python global_localisation/vision/camera_node.py
+```
+
+Terminal 2
+
+```bash
+python global_localisation/mapping/homography_node.py
+```
+
+Terminal 3
+
+```bash
+python global_localisation/mapping/robot_detector_node.py
+```
+
+## ROS Topics
+
+`/camera/image`  
+`/map/image`  
+`/robots/pose`
+
+## Documentation
+
+See:
+
+`docs/architecture.md`  
+`docs/calibration.md`  
+`docs/roadmap.md`
+
 # Global Localisation with ArUco Markers
 
 This project implements a simple global localisation pipeline using ArUco markers and homography. A calibrated overhead (or fixed) camera observes a field with known ArUco calibration markers; the system detects markers in the image, estimates a pixel-to-world homography, and reports marker positions in world coordinates.
