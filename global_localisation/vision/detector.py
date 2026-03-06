@@ -1,38 +1,51 @@
 import cv2
-import numpy as np
-import math
+import cv2.aruco as aruco
 
+# open camera
+cap = cv2.VideoCapture("/dev/video2", cv2.CAP_V4L2)
 
-class ArucoDetector:
-    def __init__(self):
-        self.aruco_dict = cv2.aruco.getPredefinedDictionary(
-            cv2.aruco.DICT_4X4_50
-        )
-        self.detector = cv2.aruco.ArucoDetector(self.aruco_dict)
+if not cap.isOpened():
+    print("Error: Could not open camera")
+    exit()
 
-    def detect(self, frame):
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        corners, ids, _ = self.detector.detectMarkers(gray)
+print("Camera started")
 
-        detections = []
+# choose ArUco dictionary
+aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 
-        if ids is not None:
-            for i in range(len(ids)):
-                pts = corners[i].reshape((4, 2)).astype(int)
+# detector parameters
+parameters = aruco.DetectorParameters()
 
-                center_x = int(np.mean(pts[:, 0]))
-                center_y = int(np.mean(pts[:, 1]))
+detector = aruco.ArucoDetector(aruco_dict, parameters)
 
-                dx = pts[1][0] - pts[0][0]
-                dy = pts[1][1] - pts[0][1]
-                theta = math.atan2(dy, dx)
+while True:
 
-                detections.append({
-                    "id": int(ids[i][0]),
-                    "x_pixel": center_x,
-                    "y_pixel": center_y,
-                    "theta_image": theta,
-                    "corners": pts
-                })
+    ret, frame = cap.read()
 
-        return detections
+    if not ret:
+        print("Frame grab failed")
+        break
+
+    # convert to grayscale
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # detect markers
+    corners, ids, rejected = detector.detectMarkers(gray)
+
+    if ids is not None:
+
+        for i in range(len(ids)):
+
+            marker_id = ids[i][0]
+
+            # calculate center of marker
+            c = corners[i][0]
+            center_x = int(c[:,0].mean())
+            center_y = int(c[:,1].mean())
+
+            print(f"Marker {marker_id} detected at pixel ({center_x}, {center_y})")
+
+    else:
+        print("No markers detected")
+
+cap.release()
