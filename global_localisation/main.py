@@ -1,7 +1,7 @@
 import cv2
 from vision.detector import ArucoDetector
 from mapping.homography import HomographyMapper
-from config import CAMERA_INDEX
+from config import CAMERA_INDEX, CALIBRATION_IDS
 
 
 def main():
@@ -20,6 +20,9 @@ def main():
         mapper.compute_homography(detections)
 
         for det in detections:
+            if det["id"] in CALIBRATION_IDS:
+                continue
+
             world = mapper.pixel_to_world(
                 det["x_pixel"], det["y_pixel"]
             )
