@@ -12,7 +12,7 @@ def main():
     detector = ArucoDetector()
     mapper = HomographyMapper()
 
-    client = mqtt.Client()
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.connect(MQTT_BROKER, MQTT_PORT)
     client.loop_start()
 
@@ -45,9 +45,9 @@ def main():
 
                 topic = f"{MQTT_TOPIC_PREFIX}{det['id']}"
                 payload = json.dumps({
-                    "x": round(x_w, 3),
-                    "y": round(y_w, 3),
-                    "theta": round(theta, 3)
+                    "x": round(float(x_w), 3),
+                    "y": round(float(y_w), 3),
+                    "theta": round(float(theta), 3)
                 })
                 client.publish(topic, payload)
 
