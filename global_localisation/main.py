@@ -28,7 +28,8 @@ def main():
                 x_w, y_w = world
                 print(
                     f"ID {det['id']} → "
-                    f"World: ({x_w:.2f}, {y_w:.2f})"
+                    f"World: ({x_w:.2f}, {y_w:.2f}), "
+                    f"theta: {det['theta_image']:.2f}"
                 )
 
     cap.release()
