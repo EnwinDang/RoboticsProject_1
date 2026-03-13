@@ -1,194 +1,162 @@
 # Global Robot Localisation using Vision (ROS2 + ArUco)
 
-Vision-based localisation system for multiple robots using ArUco markers and ROS2.
+Vision-based localisation system for multiple robots using ArUco markers, OpenCV, ROS2, and MQTT.
+
+---
 
 ## Features
 
-- Real-time robot detection
-- Homography-based map transformation
+- Real-time ArUco marker detection
+- Homography-based pixel → world coordinate mapping
 - Robot pose estimation (x, y, theta)
-- ROS2 topic publishing
+- Event-driven updates (ADD / UPDATE / REMOVE)
+- ROS2 topic publishing (`/robots/pose`)
+- MQTT publishing (`city/robots/tag{id}`)
+- Dual camera support with automatic merge
+
+---
 
 ## Hardware
 
-- Jetson Orin
-- USB Camera
-- Robots with ArUco markers
+- Jetson Orin Nano
+- 2x USB cameras (`/dev/video2` left, `/dev/video0` right)
+(Voeg hier een foto toe van de usb poorten)
+- Robots with ArUco markers (IDs 10+)
+- 6 fixed calibration markers (IDs 0–5)
+
+---
 
 ## Installation
 
-### Environment setup (venv)
-
-From the project root:
+### 1. Clone and set up virtual environment
 
 ```bash
-python -m venv .venv
+git clone https://github.com/EnwinDang/RoboticsProject_1.git
+cd RoboticsProject_1
+python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
+pip install --upgrade pip
 ```
 
-### Python packages
+### 2. Install Python dependencies
 
 ```bash
-pip install opencv-python opencv-contrib-python numpy
+pip install opencv-contrib-python numpy paho-mqtt
 ```
 
-Note: in most environments you should install **either** `opencv-python` **or** `opencv-contrib-python` (ArUco support is typically in the contrib build).
-
-## Running the system
-
-Terminal 1
+### 3. Install and start MQTT broker
 
 ```bash
-python global_localisation/vision/camera_node.py
+sudo apt install mosquitto mosquitto-clients
+sudo systemctl start mosquitto
 ```
 
-Terminal 2
+To allow other devices on the network to connect, add to `/etc/mosquitto/mosquitto.conf`:
+
+```
+listener 1883 0.0.0.0
+allow_anonymous true
+```
+
+Then restart:
 
 ```bash
-python global_localisation/mapping/homography_node.py
+sudo systemctl restart mosquitto
 ```
 
-Terminal 3
+---
 
-```bash
-python global_localisation/mapping/robot_detector_node.py
+## Configuration
+
+Edit `global_localisation/config.py`:
+
+```python
+WORLD_WIDTH = 6.0        # map width in meters
+WORLD_HEIGHT = 3.0       # map height in meters
+CALIBRATION_IDS = [0, 1, 2, 3, 4, 5]  # fixed marker IDs
+CAMERA_INDEX_1 = 2       # left camera (/dev/video2)
+CAMERA_INDEX_2 = 0       # right camera (/dev/video0)
+MQTT_BROKER = "localhost"
+MQTT_PORT = 1883
+MQTT_TOPIC_PREFIX = "city/robots/tag"
 ```
 
-## ROS Topics
-
-`/camera/image`  
-`/map/image`  
-`/robots/pose`
-
-## Documentation
-
-See:
-
-`docs/architecture.md`  
-`docs/calibration.md`  
-`docs/roadmap.md`
-
-# Global Localisation with ArUco Markers
-
-This project implements a simple global localisation pipeline using ArUco markers and homography. A calibrated overhead (or fixed) camera observes a field with known ArUco calibration markers; the system detects markers in the image, estimates a pixel-to-world homography, and reports marker positions in world coordinates.
-
-## Project Structure
-
-- `global_localisation/main.py`  
-  Main entry point. Captures frames from the camera, runs ArUco detection, updates the homography, and prints detected marker positions in world coordinates.
-
-- `global_localisation/config.py`  
-  Basic configuration:
-  - `WORLD_WIDTH`, `WORLD_HEIGHT`: world dimensions (in meters) used to define the calibration grid.
-  - `CALIBRATION_IDS`: list of ArUco IDs used as calibration markers.
-  - `CAMERA_INDEX`: index of the camera device for OpenCV.
-
-- `global_localisation/vision/detector.py`  
-  Defines `ArucoDetector`, which:
-  - Uses OpenCV's ArUco utilities to detect markers in a frame.
-  - Computes each marker's pixel center and orientation.
-  - Returns a list of detection dictionaries with keys like `id`, `x_pixel`, `y_pixel`, `theta_image`, and `corners`.
-
-- `global_localisation/vision/cam1.py`  
-  Example script that opens the camera, runs `ArucoDetector`, and uses the homography mapper to convert detected pixel positions to world coordinates, displaying the camera feed in a window.
-
-- `global_localisation/mapping/homography.py`  
-  Defines `HomographyMapper`, which:
-  - Stores world coordinates for calibration marker IDs based on `WORLD_WIDTH` and `WORLD_HEIGHT`.
-  - Builds a pixel-to-world homography from detected calibration markers.
-  - Provides `pixel_to_world(x_pixel, y_pixel)` to map image coordinates into world coordinates (returns `None` until a homography has been estimated).
-
-- `global_localisation/tools/aruco_generate.py`  
-  Utility for working with / generating ArUco markers (e.g. to print calibration and robot markers). Exact usage depends on how you extend this script.
-
-- `global_localisation/aruco_layout.pdf`  
-  Reference layout for the physical placement of ArUco markers in the environment.
-
-## Environment Setup
-
-It is recommended to run this project inside a dedicated Python virtual environment to avoid dependency conflicts with other projects.
-
-From the project root:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-```
-
-Once the virtual environment is active, install the dependencies below.
-
-## Requirements
-
-Install dependencies with `pip` (inside your virtual environment, Python 3.10+ recommended):
-
-```bash
-pip install opencv-python numpy flask
-```
-
-If you need ArUco support via `cv2.aruco` and it is missing from your OpenCV build, you may need to install the contrib package instead:
-
-```bash
-pip install opencv-contrib-python numpy flask
-```
+---
 
 ## Running the System
 
-1. **Set up the camera and markers**
-   - Place the ArUco calibration markers in the environment according to `aruco_layout.pdf`.
-   - Ensure the camera has a clear, stable view of the entire calibration area.
+Source ROS2 and run from the project root:
 
-2. **Adjust configuration**
-   - Edit `global_localisation/config.py`:
-     - Set `WORLD_WIDTH` and `WORLD_HEIGHT` to match your real-world field size (in meters).
-     - Update `CALIBRATION_IDS` if your calibration markers use different IDs.
-     - Set `CAMERA_INDEX` to match your camera device (0, 1, ...).
+```bash
+source /opt/ros/humble/setup.bash
+cd ~/RoboticsProject_1
+python3 global_localisation/main.py
+```
 
-3. **Run the main script**
+### Expected terminal output
 
-   From the project root:
+```
+[ADD]    ID 10 → World: (1.20, 0.80), theta: 0.12
+[UPDATE] ID 10 → World: (1.45, 0.95), theta: 0.15
+[REMOVE] ID 10
+```
 
-   ```bash
-   python -m global_localisation.main
-   ```
+Only prints when a robot appears, moves significantly (>5cm or >0.15 rad), or disappears.
 
-   or directly (depending on your PYTHONPATH / working directory):
+---
 
-   ```bash
-   python global_localisation/main.py
-   ```
+## ROS2 Topics
 
-   You should see:
-   - A camera window displaying the live feed.
-   - Printed lines in the terminal like:
-     `ID 3 → World: (x.xx, y.yy)`
+| Topic | Type | Description |
+|---|---|---|
+| `/robots/pose` | `geometry_msgs/Pose2D` | Active robot poses |
+| `/camera/image` | `sensor_msgs/Image` | Raw camera frames (via camera_node) |
+| `/map/image` | `sensor_msgs/Image` | Warped map image (via homography_node) |
 
-4. **Alternative camera script**
+Monitor poses:
 
-   You can also run `cam1.py` directly if you prefer that entry point:
+```bash
+source /opt/ros/humble/setup.bash
+ros2 topic echo /robots/pose
+```
 
-   ```bash
-   python global_localisation/vision/cam1.py
-   ```
+---
 
-## How It Works (High Level)
+## MQTT
 
-1. **Detection**
-   - Each frame from the camera is converted to grayscale.
-   - `ArucoDetector` finds ArUco markers and computes their pixel centers and orientations.
+Robot positions are published to `city/robots/tag{id}` as JSON:
 
-2. **Homography Estimation**
-   - When calibration markers (IDs listed in `CALIBRATION_IDS`) are visible, `HomographyMapper` collects their pixel positions and corresponding world coordinates.
-   - It uses `cv2.findHomography` to compute a homography matrix \( H \) mapping image coordinates \((x_\text{pixel}, y_\text{pixel})\) into world coordinates \((x_\text{world}, y_\text{world})\).
+```json
+{"x": 2.14, "y": 1.39, "theta": 1.57}
+```
 
-3. **World Mapping**
-   - For any detected marker, `pixel_to_world` applies the homography (via `cv2.perspectiveTransform`) to convert its center pixel location into world coordinates.
-   - Until at least four calibration markers are detected and a valid homography is found, `pixel_to_world` returns `None`.
+Any device on the same network can subscribe — see `docs/mqtt.md` for details.
 
-## Notes and Extensions
+---
 
-- You can extend `ArucoDetector` to estimate full 6D pose if you have camera intrinsics and marker sizes.
-- `HomographyMapper` currently assumes a flat 2D field; for 3D environments you would need a different mapping strategy.
-- The `tools/` folder is a good place to add utilities for generating new marker sheets, visualising layouts, or debugging detections.
+## Project Structure
 
-# RoboticsProject_1
+```
+global_localisation/
+├── main.py                     # Entry point (cameras + detection + ROS2 + MQTT)
+├── config.py                   # All configuration
+├── vision/
+│   ├── detector.py             # ArucoDetector class
+│   └── camera_node.py          # ROS2 camera node
+├── mapping/
+│   ├── homography.py           # HomographyMapper class
+│   ├── homography_node.py      # ROS2 homography node
+│   └── robot_detector_node.py  # ROS2 robot detector node
+└── tools/
+    └── aruco_generate.py       # Generate ArUco marker images
+```
+
+---
+
+## Documentation
+
+- `docs/architecture.md` — system architecture and data flow
+- `docs/calibration.md` — marker layout and homography calibration
+- `docs/mqtt.md` — MQTT interface for other teams
+- `docs/roadmap.md` — planned features
+- `docs/next_session.md` — TODO for next session

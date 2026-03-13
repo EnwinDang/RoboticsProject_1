@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-from config import CAMERA_INDEX
+from config import CAMERA_INDEX_1
 
 
 class CameraNode(Node):
@@ -24,7 +24,7 @@ class CameraNode(Node):
 
         self.bridge = CvBridge()
 
-        self.cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_V4L2)
+        self.cap = cv2.VideoCapture(CAMERA_INDEX_1, cv2.CAP_V4L2)
 
         self.timer = self.create_timer(0.03, self.publish_frame)
 

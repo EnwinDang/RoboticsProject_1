@@ -13,3 +13,7 @@ CAMERA_INDEX_2 = 0  # right side
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 MQTT_TOPIC_PREFIX = "city/robots/tag"
+
+# Tracking thresholds
+POSITION_THRESHOLD = 0.05  # meters
+ANGLE_THRESHOLD = 0.15     # radians
