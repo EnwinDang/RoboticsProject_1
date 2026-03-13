@@ -1,51 +1,72 @@
 import cv2
 import cv2.aruco as aruco
+import numpy as np
 
-# open camera
-cap = cv2.VideoCapture("/dev/video2", cv2.CAP_V4L2)
 
-if not cap.isOpened():
-    print("Error: Could not open camera")
-    exit()
+class ArucoDetector:
+    def __init__(self):
+        aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+        parameters = aruco.DetectorParameters()
+        self.detector = aruco.ArucoDetector(aruco_dict, parameters)
 
-print("Camera started")
+    def detect(self, frame):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        corners, ids, _ = self.detector.detectMarkers(gray)
 
-# choose ArUco dictionary
-aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+        detections = []
 
-# detector parameters
-parameters = aruco.DetectorParameters()
+        if ids is not None:
+            for i in range(len(ids)):
+                c = corners[i][0]
+                center_x = float(c[:, 0].mean())
+                center_y = float(c[:, 1].mean())
 
-detector = aruco.ArucoDetector(aruco_dict, parameters)
+                # orientation from bottom-left to bottom-right corner
+                dx = c[1][0] - c[0][0]
+                dy = c[1][1] - c[0][1]
+                theta = float(np.arctan2(dy, dx))
 
-while True:
+                detections.append({
+                    "id": int(ids[i][0]),
+                    "x_pixel": center_x,
+                    "y_pixel": center_y,
+                    "theta_image": theta,
+                    "corners": c,
+                })
 
-    ret, frame = cap.read()
+        return detections
 
-    if not ret:
-        print("Frame grab failed")
-        break
 
-    # convert to grayscale
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+if __name__ == "__main__":
+    cap = cv2.VideoCapture(0)
 
-    # detect markers
-    corners, ids, rejected = detector.detectMarkers(gray)
+    if not cap.isOpened():
+        print("Error: Could not open camera")
+        exit()
 
-    if ids is not None:
+    print("Camera started. Press ESC to quit.")
 
-        for i in range(len(ids)):
+    detector = ArucoDetector()
 
-            marker_id = ids[i][0]
+    while True:
+        ret, frame = cap.read()
 
-            # calculate center of marker
-            c = corners[i][0]
-            center_x = int(c[:,0].mean())
-            center_y = int(c[:,1].mean())
+        if not ret:
+            print("Frame grab failed")
+            break
 
-            print(f"Marker {marker_id} detected at pixel ({center_x}, {center_y})")
+        detections = detector.detect(frame)
 
-    else:
-        print("No markers detected")
+        if detections:
+            for det in detections:
+                print(f"Marker {det['id']} at pixel ({det['x_pixel']:.0f}, {det['y_pixel']:.0f}), theta={det['theta_image']:.2f}")
+        else:
+            print("No markers detected")
 
-cap.release()
+        cv2.imshow("ArUco Detector", frame)
+
+        if cv2.waitKey(1) == 27:
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()

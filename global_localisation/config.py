@@ -6,4 +6,4 @@ WORLD_HEIGHT = 3.0
 CALIBRATION_IDS = [0, 1, 2, 3, 4, 5]
 
 # Camera index (start with one)
-CAMERA_INDEX = 0
+CAMERA_INDEX = 2

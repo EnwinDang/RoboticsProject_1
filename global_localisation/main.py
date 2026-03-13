@@ -1,17 +1,11 @@
 import cv2
 from vision.detector import ArucoDetector
 from mapping.homography import HomographyMapper
+from config import CAMERA_INDEX
 
 
 def main():
-    cap = cv2.VideoCapture(
-        "nvarguscamerasrc ! "
-        "video/x-raw(memory:NVMM), width=1280, height=720, framerate=30/1 ! "
-        "nvvidconv ! video/x-raw, format=BGRx ! "
-        "videoconvert ! video/x-raw, format=BGR ! "
-        "appsink drop=true",
-        cv2.CAP_GSTREAMER
-    )
+    cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_V4L2)
     detector = ArucoDetector()
     mapper = HomographyMapper()
 
@@ -37,13 +31,7 @@ def main():
                     f"World: ({x_w:.2f}, {y_w:.2f})"
                 )
 
-        cv2.imshow("Frame", frame)
-
-        if cv2.waitKey(1) == 27:
-            break
-
     cap.release()
-    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
