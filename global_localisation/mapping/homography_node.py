@@ -9,14 +9,14 @@ import cv2.aruco as aruco
 import numpy as np
 
 
-# Known map layout (meters)
+# Known map layout (meters) - must match physical placement
 MAP_MARKERS = {
-    0: (0,0),
-    1: (3,0),
-    2: (6,0),
-    3: (0,3),
-    4: (3,3),
-    5: (6,3)
+    0: (0.0, 0.0),
+    1: (0.0, 3.0),
+    2: (3.0, 0.0),
+    3: (3.0, 3.0),
+    4: (6.0, 0.0),
+    5: (6.0, 3.0),
 }
 
 PIXELS_PER_METER = 100
