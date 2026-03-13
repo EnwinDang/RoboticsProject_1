@@ -27,35 +27,65 @@ Which corresponds to:
 
 ---
 
+# Cameras
+
+Two USB cameras are mounted overhead, each covering half of the map.
+
+| Camera | Device      | Coverage         |
+|--------|-------------|------------------|
+| Cam 1  | /dev/video2 | Left side (x: 0–3m) |
+| Cam 2  | /dev/video0 | Right side (x: 3–6m) |
+
+Both cameras are configured in `config.py`:
+
+```python
+CAMERA_INDEX_1 = 2  # left side
+CAMERA_INDEX_2 = 0  # right side
+```
+
+---
+
 # Calibration Markers
 
-Six fixed ArUco markers are placed on the map.
+Six fixed ArUco markers (IDs 0–5, DICT_4X4_50) are placed at known positions on the map.
 
-```
-Marker IDs: 0–5
-```
-
-These markers define known reference points used to compute the homography matrix.
+These markers must remain **fixed and visible** to the camera at all times.
 
 ---
 
 # Marker Layout
 
-Example layout of calibration markers:
-
 ```
-+-----------------------------+
-| 0                     1     |
-|                             |
-|                             |
-| 2                     3     |
-|                             |
-|                             |
-| 4                     5     |
-+-----------------------------+
+(0,0)          (3,0)          (6,0)
+  [0]────────────[2]────────────[4]
+   │                             │
+   │                             │
+   │                             │
+  [1]────────────[3]────────────[5]
+(0,3)          (3,3)          (6,3)
 ```
 
-These markers must remain **fixed and visible** to the camera.
+World coordinates per marker:
+
+| Marker ID | X (m) | Y (m) | Position      |
+|-----------|-------|-------|---------------|
+| 0         | 0.0   | 0.0   | Top-left      |
+| 1         | 0.0   | 3.0   | Bottom-left   |
+| 2         | 3.0   | 0.0   | Top-middle    |
+| 3         | 3.0   | 3.0   | Bottom-middle |
+| 4         | 6.0   | 0.0   | Top-right     |
+| 5         | 6.0   | 3.0   | Bottom-right  |
+
+---
+
+# Robot Markers
+
+Robot ArUco markers use IDs starting from 10 (DICT_4X4_50).
+
+| Marker ID | Role  |
+|-----------|-------|
+| 0–5       | Calibration (fixed) |
+| 10+       | Robots (moving) |
 
 ---
 
@@ -64,50 +94,46 @@ These markers must remain **fixed and visible** to the camera.
 The homography transformation maps:
 
 ```
-camera pixels → world coordinates
+camera pixels → world coordinates (meters)
 ```
 
-This produces a **top-down view of the environment**, removing camera perspective distortion.
+Requires a minimum of **4 calibration markers** visible at once.
+
+Computed using:
+
+```python
+cv2.findHomography(pixel_points, world_points)
+```
+
+Applied using:
+
+```python
+cv2.perspectiveTransform(point, H)
+```
 
 ---
 
 # Calibration Process
 
-1. Capture image from camera.
-2. Detect calibration ArUco markers.
-3. Extract marker corner coordinates.
-4. Define known world coordinates.
-5. Compute homography matrix using OpenCV.
-
-Example function:
-
-```
-cv2.findHomography()
-```
-
-6. Apply transformation:
-
-```
-cv2.warpPerspective()
-```
+1. Camera captures a frame.
+2. ArUco markers are detected in the frame.
+3. Pixel coordinates of calibration markers (IDs 0–5) are extracted.
+4. Known world coordinates are looked up from the table above.
+5. Homography matrix H is computed.
+6. H is used to convert any pixel position to world coordinates.
 
 ---
 
 # Output
 
-The resulting image is a **rectified top-down map** where:
+For each robot marker detected:
 
-- distances correspond to real-world meters
-- robots can be accurately localised
-- coordinates are consistent across the map
+```
+ID 10 → World: (2.14, 1.39), theta: 1.57
+```
 
----
+Published over MQTT to:
 
-# Importance
-
-Homography calibration ensures:
-
-- accurate robot localisation
-- consistent coordinate system
-- reliable multi-robot tracking
-
+```
+city/robots/tag10
+```

@@ -5,8 +5,9 @@ WORLD_HEIGHT = 3.0
 # Calibration marker IDs
 CALIBRATION_IDS = [0, 1, 2, 3, 4, 5]
 
-# Camera index (start with one)
-CAMERA_INDEX = 2
+# Camera indices
+CAMERA_INDEX_1 = 2  # left side
+CAMERA_INDEX_2 = 0  # right side
 
 # MQTT broker
 MQTT_BROKER = "localhost"
