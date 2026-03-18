@@ -38,35 +38,35 @@ class ArucoDetector:
 
 
 if __name__ == "__main__":
-    cap = cv2.VideoCapture(0)
+    import sys
+    camera_index = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+
+    cap = cv2.VideoCapture(camera_index, cv2.CAP_V4L2)
 
     if not cap.isOpened():
-        print("Error: Could not open camera")
+        print(f"Error: Could not open camera {camera_index}")
         exit()
 
-    print("Camera started. Press ESC to quit.")
+    print(f"Camera {camera_index} started. Press Ctrl+C to quit.")
 
     detector = ArucoDetector()
 
-    while True:
-        ret, frame = cap.read()
+    try:
+        while True:
+            ret, frame = cap.read()
 
-        if not ret:
-            print("Frame grab failed")
-            break
+            if not ret:
+                print("Frame grab failed")
+                break
 
-        detections = detector.detect(frame)
+            detections = detector.detect(frame)
 
-        if detections:
-            for det in detections:
-                print(f"Marker {det['id']} at pixel ({det['x_pixel']:.0f}, {det['y_pixel']:.0f}), theta={det['theta_image']:.2f}")
-        else:
-            print("No markers detected")
-
-        cv2.imshow("ArUco Detector", frame)
-
-        if cv2.waitKey(1) == 27:
-            break
+            if detections:
+                for det in detections:
+                    print(f"Marker {det['id']} at pixel ({det['x_pixel']:.0f}, {det['y_pixel']:.0f}), theta={det['theta_image']:.2f}")
+            else:
+                print("No markers detected")
+    except KeyboardInterrupt:
+        pass
 
     cap.release()
-    cv2.destroyAllWindows()
