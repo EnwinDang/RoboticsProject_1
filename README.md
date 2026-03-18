@@ -44,6 +44,12 @@ pip install --upgrade pip
 pip install opencv-contrib-python numpy paho-mqtt
 ```
 
+For debugging tools (camera stream):
+
+```bash
+pip install flask
+```
+
 ### 3. Install and start MQTT broker
 
 ```bash
@@ -148,8 +154,38 @@ global_localisation/
 │   ├── homography_node.py      # ROS2 homography node
 │   └── robot_detector_node.py  # ROS2 robot detector node
 └── tools/
-    └── aruco_generate.py       # Generate ArUco marker images
+    ├── aruco_generate.py           # Generate ArUco marker images
+    ├── generate_calibration_pdf.py # Generate printable ArUco PDF
+    └── camera_stream.py            # Live camera stream in browser (debugging)
 ```
+
+---
+
+## Debugging
+
+### Live camera stream
+
+View the camera feed with ArUco detections overlaid in your browser:
+
+```bash
+source .venv/bin/activate
+python3 global_localisation/tools/camera_stream.py 0   # or 2 for left camera
+```
+
+Then open `http://<jetson-ip>:8080` in your browser.
+
+> Note: stop the stream before running `main.py` — two processes cannot use the same camera simultaneously.
+
+### Single camera mode
+
+To run with only one camera, set the unused camera index to a non-existent value in `config.py`:
+
+```python
+CAMERA_INDEX_1 = 0    # active camera
+CAMERA_INDEX_2 = 99   # disabled
+```
+
+At least 4 calibration markers (IDs 0–5) must be visible to the active camera for homography to work.
 
 ---
 
