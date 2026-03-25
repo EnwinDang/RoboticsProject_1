@@ -6,7 +6,7 @@ WORLD_HEIGHT = 3.0
 CALIBRATION_IDS = [0, 1, 2, 3, 4, 5]
 
 # Camera indices
-CAMERA_INDEX_1 = 2  # left side
+CAMERA_INDEX_1 = 4  # left side
 CAMERA_INDEX_2 = 0  # right side
 
 # MQTT broker
