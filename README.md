@@ -19,7 +19,7 @@ Vision-based localisation system for multiple robots using ArUco markers, OpenCV
 ## Hardware
 
 - Jetson Orin Nano
-- 2x USB cameras (`/dev/video2` left, `/dev/video0` right)
+- 2x USB cameras (`/dev/video4` left, `/dev/video0` right)
 (Voeg hier een foto toe van de usb poorten)
 - Robots with ArUco markers (IDs 10+)
 - 6 fixed calibration markers (IDs 0–5)
@@ -80,7 +80,7 @@ Edit `global_localisation/config.py`:
 WORLD_WIDTH = 6.0        # map width in meters
 WORLD_HEIGHT = 3.0       # map height in meters
 CALIBRATION_IDS = [0, 1, 2, 3, 4, 5]  # fixed marker IDs
-CAMERA_INDEX_1 = 2       # left camera (/dev/video2)
+CAMERA_INDEX_1 = 4       # left camera (/dev/video4)
 CAMERA_INDEX_2 = 0       # right camera (/dev/video0)
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
@@ -172,7 +172,7 @@ source .venv/bin/activate
 python3 global_localisation/tools/camera_stream.py 0   # or 2 for left camera
 ```
 
-Then open `http://<jetson-ip>:8080` in your browser.
+Then open `http://jetson-dang.local:8080` in your browser.
 
 > Note: stop the stream before running `main.py` — two processes cannot use the same camera simultaneously.
 

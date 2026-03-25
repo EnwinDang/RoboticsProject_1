@@ -96,4 +96,4 @@ client.loop_forever()
 
 # Update Rate
 
-Robot positions are published every camera frame — approximately **27 times per second**.
+Robot positions are published event-driven — only when a robot appears, moves significantly (>5cm or >0.15 rad), or disappears.
