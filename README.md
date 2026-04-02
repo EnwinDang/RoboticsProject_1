@@ -197,6 +197,17 @@ CAMERA_INDEX_2 = 99   # disabled
 
 At least 4 calibration markers (IDs 0–5) must be visible to the active camera for homography to work.
 
+### FTP snapshot upload
+
+To capture both cameras as one stitched image and upload it every 30 seconds, run:
+
+```bash
+python3 global_localisation/tools/camera_snapshot_ftp.py
+```
+
+The script uploads one file repeatedly and overwrites the previous image on the FTP server.
+FTP settings are read from `global_localisation/config.py`, with environment variables as optional overrides.
+
 ---
 
 ## Documentation

@@ -14,6 +14,14 @@ MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 MQTT_TOPIC_PREFIX = "city/robots/tag"
 
+# FTP upload defaults for camera snapshots
+FTP_HOST = "ftp.botopiabe.webhosting.be"
+FTP_USER = "dashboard@botopiabe"
+FTP_PASSWORD = "botopia123!"
+FTP_REMOTE_DIR = "/"
+FTP_REMOTE_NAME = "camera_snapshot.jpg"
+SNAPSHOT_INTERVAL_SECONDS = 30
+
 # Tracking thresholds
 POSITION_THRESHOLD = 0.05  # meters
 ANGLE_THRESHOLD = 0.15     # radians
