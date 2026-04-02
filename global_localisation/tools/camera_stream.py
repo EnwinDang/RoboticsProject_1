@@ -73,7 +73,10 @@ def rotate_frame(frame, degrees):
     height, width = frame.shape[:2]
     center = (width / 2.0, height / 2.0)
     matrix = cv2.getRotationMatrix2D(center, degrees, 1.0)
-    return cv2.warpAffine(frame, matrix, (width, height), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+    new_w, new_h = (height, width) if abs(degrees) == 90.0 else (width, height)
+    matrix[0, 2] += (new_w - width) / 2
+    matrix[1, 2] += (new_h - height) / 2
+    return cv2.warpAffine(frame, matrix, (new_w, new_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
 
 def compose_frame(frame1, frame2):
