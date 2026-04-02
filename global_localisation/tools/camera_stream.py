@@ -23,15 +23,16 @@ aruco_params.adaptiveThreshWinSizeMax = 23
 aruco_params.adaptiveThreshWinSizeStep = 10
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
-PANEL_WIDTH = 960
-PANEL_HEIGHT = 540
-TOTAL_WIDTH = PANEL_WIDTH * 2
+PANEL_WIDTH = 1180
+PANEL_HEIGHT = 664
+OVERLAP_WIDTH = 260
+TOTAL_WIDTH = PANEL_WIDTH * 2 - OVERLAP_WIDTH
 TOTAL_HEIGHT = PANEL_HEIGHT
 LABEL_STYLE = cv2.FONT_HERSHEY_SIMPLEX
 
 # Crop the outer edges a bit so both cameras blend into one continuous track view.
-CROP_LEFT = (0.04, 0.98, 0.04, 0.98)
-CROP_RIGHT = (0.02, 0.96, 0.04, 0.98)
+CROP_LEFT = (0.03, 0.99, 0.03, 0.98)
+CROP_RIGHT = (0.01, 0.97, 0.03, 0.98)
 ROTATE_LEFT_DEGREES = 90.0
 ROTATE_RIGHT_DEGREES = -90.0
 
@@ -92,7 +93,21 @@ def compose_frame(frame1, frame2):
         right = crop_frame(frame2, CROP_RIGHT)
         right = rotate_frame(right, ROTATE_RIGHT_DEGREES)
         right = cv2.resize(right, (PANEL_WIDTH, PANEL_HEIGHT))
-        canvas[0:PANEL_HEIGHT, PANEL_WIDTH:TOTAL_WIDTH] = right
+        right_start = PANEL_WIDTH - OVERLAP_WIDTH
+        left_overlap_start = PANEL_WIDTH - OVERLAP_WIDTH
+        left_overlap_end = PANEL_WIDTH
+        right_overlap_start = 0
+        right_overlap_end = OVERLAP_WIDTH
+
+        if frame1 is not None:
+            left_overlap = canvas[0:PANEL_HEIGHT, left_overlap_start:left_overlap_end].copy()
+            right_overlap = right[:, right_overlap_start:right_overlap_end]
+            blended_overlap = cv2.addWeighted(left_overlap, 0.5, right_overlap, 0.5, 0)
+            canvas[0:PANEL_HEIGHT, left_overlap_start:left_overlap_end] = blended_overlap
+            canvas[0:PANEL_HEIGHT, left_overlap_end:right_start] = right[:, right_overlap_end:PANEL_WIDTH]
+        else:
+            canvas[0:PANEL_HEIGHT, right_start:TOTAL_WIDTH] = right
+
         cv2.rectangle(canvas, (PANEL_WIDTH + 12, 12), (PANEL_WIDTH + 320, 58), (0, 0, 0), -1)
         cv2.putText(canvas, "RIGHT", (PANEL_WIDTH + 20, 45), LABEL_STYLE, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 
