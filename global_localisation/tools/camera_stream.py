@@ -1,7 +1,7 @@
 """
 Live camera stream viewable in browser.
 Run on Jetson: python tools/camera_stream.py
-Then open: http://jetson-dang.local:5000
+Then open: http://jetson-dang.local:8080
 """
 import sys
 import os
@@ -12,7 +12,7 @@ import numpy as np
 from flask import Flask, Response
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from config import CAMERA_INDEX_1, CAMERA_INDEX_2
+from config import CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS
 
 app = Flask(__name__)
 
@@ -40,7 +40,12 @@ def detect_and_draw(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     corners, ids, _ = detector.detectMarkers(gray)
     if ids is not None:
-        aruco.drawDetectedMarkers(frame, corners, ids)
+        for i, corner in enumerate(corners):
+            marker_id = int(ids[i][0])
+            color = (0, 0, 255) if marker_id in CALIBRATION_IDS else (0, 255, 0)
+            pts = corner[0].astype(int)
+            cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=3)
+            cv2.putText(frame, str(marker_id), tuple(pts[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
     return frame
 
 
@@ -79,8 +84,6 @@ def capture_loop():
             frame2 = None
 
         combined = compose_frame(frame1, frame2)
-        if combined is None:
-            continue
 
         with frame_lock:
             latest_frame = combined
@@ -118,5 +121,5 @@ if __name__ == "__main__":
     t = threading.Thread(target=capture_loop, daemon=True)
     t.start()
 
-    print(f"Streaming cameras {CAMERA_INDEX_1} + {CAMERA_INDEX_2} (LEFT/RIGHT) → http://0.0.0.0:5000")
-    app.run(host="0.0.0.0", port=5000)
+    print(f"Streaming cameras {CAMERA_INDEX_1} + {CAMERA_INDEX_2} (LEFT/RIGHT) → http://0.0.0.0:8080")
+    app.run(host="0.0.0.0", port=8080)
