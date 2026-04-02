@@ -29,7 +29,13 @@ def detect_and_draw(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     corners, ids, _ = detector.detectMarkers(gray)
     if ids is not None:
-        aruco.drawDetectedMarkers(frame, corners, ids)
+        for i, corner in enumerate(corners):
+            marker_id = int(ids[i][0])
+            color = (0, 0, 255) if marker_id in CALIBRATION_IDS else (0, 255, 0)
+            pts = corner[0].astype(int)
+            cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=3)
+            cv2.putText(frame, str(marker_id), tuple(pts[0]),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
     return frame
 
 
