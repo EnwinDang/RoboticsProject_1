@@ -165,7 +165,7 @@ global_localisation/
 
 ### Live camera stream
 
-View the camera feed with ArUco detections overlaid in your browser:
+View two equal camera panels side by side in a fixed 1920x540 browser stream with ArUco detections overlaid:
 
 ```bash
 source .venv/bin/activate
