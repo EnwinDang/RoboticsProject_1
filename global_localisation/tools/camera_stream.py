@@ -3,10 +3,14 @@ Live dual-camera stream viewable in browser.
 Run on Jetson: python tools/camera_stream.py
 Then open: http://jetson-dang.local:8080
 """
+import sys
+import os
 import threading
 import cv2
 import cv2.aruco as aruco
 from flask import Flask, Response
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from config import CAMERA_INDEX_1, CAMERA_INDEX_2
 
 app = Flask(__name__)
