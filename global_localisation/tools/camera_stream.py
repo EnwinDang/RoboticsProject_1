@@ -25,10 +25,14 @@ detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
 PANEL_WIDTH = 1180
 PANEL_HEIGHT = 664
-OVERLAP_WIDTH = 260
-TOTAL_WIDTH = PANEL_WIDTH * 2 - OVERLAP_WIDTH
+TOTAL_WIDTH = 2100
 TOTAL_HEIGHT = PANEL_HEIGHT
 LABEL_STYLE = cv2.FONT_HERSHEY_SIMPLEX
+
+# Stitch anchors: these x-ratios are aligned onto the same seam line.
+SEAM_X = 980
+LEFT_ANCHOR_RATIO = 0.84
+RIGHT_ANCHOR_RATIO = 0.14
 
 # Crop the outer edges a bit so both cameras blend into one continuous track view.
 CROP_LEFT = (0.03, 0.99, 0.03, 0.98)
@@ -80,36 +84,80 @@ def rotate_frame(frame, degrees):
 
 def compose_frame(frame1, frame2):
     canvas = np.zeros((TOTAL_HEIGHT, TOTAL_WIDTH, 3), dtype=np.uint8)
+    left_label_x = None
+    right_label_x = None
+
+    left_image = None
+    right_image = None
 
     if frame1 is not None:
-        left = crop_frame(frame1, CROP_LEFT)
-        left = rotate_frame(left, ROTATE_LEFT_DEGREES)
-        left = cv2.resize(left, (PANEL_WIDTH, PANEL_HEIGHT))
-        canvas[0:PANEL_HEIGHT, 0:PANEL_WIDTH] = left
-        cv2.rectangle(canvas, (12, 12), (320, 58), (0, 0, 0), -1)
-        cv2.putText(canvas, "LEFT", (20, 45), LABEL_STYLE, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+        left_image = crop_frame(frame1, CROP_LEFT)
+        left_image = rotate_frame(left_image, ROTATE_LEFT_DEGREES)
+        left_image = cv2.resize(left_image, (PANEL_WIDTH, PANEL_HEIGHT))
 
     if frame2 is not None:
-        right = crop_frame(frame2, CROP_RIGHT)
-        right = rotate_frame(right, ROTATE_RIGHT_DEGREES)
-        right = cv2.resize(right, (PANEL_WIDTH, PANEL_HEIGHT))
-        right_start = PANEL_WIDTH - OVERLAP_WIDTH
-        left_overlap_start = PANEL_WIDTH - OVERLAP_WIDTH
-        left_overlap_end = PANEL_WIDTH
-        right_overlap_start = 0
-        right_overlap_end = OVERLAP_WIDTH
+        right_image = crop_frame(frame2, CROP_RIGHT)
+        right_image = rotate_frame(right_image, ROTATE_RIGHT_DEGREES)
+        right_image = cv2.resize(right_image, (PANEL_WIDTH, PANEL_HEIGHT))
 
-        if frame1 is not None:
-            left_overlap = canvas[0:PANEL_HEIGHT, left_overlap_start:left_overlap_end].copy()
-            right_overlap = right[:, right_overlap_start:right_overlap_end]
-            blended_overlap = cv2.addWeighted(left_overlap, 0.5, right_overlap, 0.5, 0)
-            canvas[0:PANEL_HEIGHT, left_overlap_start:left_overlap_end] = blended_overlap
-            canvas[0:PANEL_HEIGHT, PANEL_WIDTH:TOTAL_WIDTH] = right[:, OVERLAP_WIDTH:PANEL_WIDTH]
-        else:
-            canvas[0:PANEL_HEIGHT, right_start:TOTAL_WIDTH] = right
+    if left_image is None and right_image is None:
+        return canvas
 
-        cv2.rectangle(canvas, (PANEL_WIDTH + 12, 12), (PANEL_WIDTH + 320, 58), (0, 0, 0), -1)
-        cv2.putText(canvas, "RIGHT", (PANEL_WIDTH + 20, 45), LABEL_STYLE, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+    left_buffer = np.zeros_like(canvas, dtype=np.float32)
+    right_buffer = np.zeros_like(canvas, dtype=np.float32)
+    left_mask = np.zeros((TOTAL_HEIGHT, TOTAL_WIDTH), dtype=bool)
+    right_mask = np.zeros((TOTAL_HEIGHT, TOTAL_WIDTH), dtype=bool)
+
+    if left_image is not None:
+        left_anchor_x = int(PANEL_WIDTH * LEFT_ANCHOR_RATIO)
+        left_x = SEAM_X - left_anchor_x
+        left_start = max(0, left_x)
+        left_end = min(TOTAL_WIDTH, left_x + PANEL_WIDTH)
+        src_left_start = max(0, -left_x)
+        src_left_end = src_left_start + (left_end - left_start)
+
+        if left_end > left_start:
+            left_chunk = left_image[:, src_left_start:src_left_end]
+            left_buffer[:, left_start:left_end] = left_chunk.astype(np.float32)
+            left_mask[:, left_start:left_end] = True
+
+            left_label_x = max(12, min(left_start + 12, TOTAL_WIDTH - 320))
+
+    if right_image is not None:
+        right_anchor_x = int(PANEL_WIDTH * RIGHT_ANCHOR_RATIO)
+        right_x = SEAM_X - right_anchor_x
+        right_start = max(0, right_x)
+        right_end = min(TOTAL_WIDTH, right_x + PANEL_WIDTH)
+        src_right_start = max(0, -right_x)
+        src_right_end = src_right_start + (right_end - right_start)
+
+        if right_end > right_start:
+            right_chunk = right_image[:, src_right_start:src_right_end]
+            right_buffer[:, right_start:right_end] = right_chunk.astype(np.float32)
+            right_mask[:, right_start:right_end] = True
+
+            right_label_x = max(12, min(right_start + 12, TOTAL_WIDTH - 320))
+
+    both_mask = left_mask & right_mask
+    only_left_mask = left_mask & (~right_mask)
+    only_right_mask = right_mask & (~left_mask)
+
+    canvas_float = np.zeros_like(left_buffer)
+    canvas_float[only_left_mask] = left_buffer[only_left_mask]
+    canvas_float[only_right_mask] = right_buffer[only_right_mask]
+    canvas_float[both_mask] = 0.5 * left_buffer[both_mask] + 0.5 * right_buffer[both_mask]
+
+    stitched = np.clip(canvas_float, 0, 255).astype(np.uint8)
+    non_black = (stitched[:, :, 0] > 0) | (stitched[:, :, 1] > 0) | (stitched[:, :, 2] > 0)
+    canvas[non_black] = stitched[non_black]
+
+    if left_label_x is not None:
+        cv2.rectangle(canvas, (left_label_x, 12), (left_label_x + 308, 58), (0, 0, 0), -1)
+        cv2.putText(canvas, "LEFT", (left_label_x + 8, 45), LABEL_STYLE, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+
+    if right_label_x is not None:
+        cv2.rectangle(canvas, (right_label_x, 12), (right_label_x + 308, 58), (0, 0, 0), -1)
+        cv2.putText(canvas, "RIGHT", (right_label_x + 8, 45), LABEL_STYLE, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 
     return canvas
 
