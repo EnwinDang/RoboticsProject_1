@@ -14,6 +14,7 @@ Environment variables:
 
 import io
 import os
+import subprocess
 import sys
 import time
 from ftplib import FTP, FTP_TLS
@@ -168,14 +169,15 @@ def main():
     cap1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     cap1.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
     cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
-    cap1.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-    cap1.set(cv2.CAP_PROP_FOCUS, 10)
     cap2 = cv2.VideoCapture(CAMERA_INDEX_2, cv2.CAP_V4L2)
     cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     cap2.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
     cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
-    cap2.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-    cap2.set(cv2.CAP_PROP_FOCUS, 10)
+
+    # Set focus via v4l2-ctl for both cameras
+    for dev in [f"/dev/video{CAMERA_INDEX_1}", f"/dev/video{CAMERA_INDEX_2}"]:
+        subprocess.run(["v4l2-ctl", "-d", dev, "-c", "focus_automatic_continuous=0"], check=False)
+        subprocess.run(["v4l2-ctl", "-d", dev, "-c", "focus_absolute=10"], check=False)
 
     if not cap1.isOpened():
         print(f"Error: Could not open camera {CAMERA_INDEX_1}")
@@ -183,6 +185,11 @@ def main():
         print(f"Error: Could not open camera {CAMERA_INDEX_2}")
     if not cap1.isOpened() and not cap2.isOpened():
         raise SystemExit(1)
+
+    # Warm up cameras — discard first frames so exposure/focus stabilises
+    for _ in range(10):
+        cap1.read()
+        cap2.read()
 
     ftp = get_ftp_connection()
     print(f"Uploading stitched camera image every {SNAPSHOT_INTERVAL_SECONDS:.0f} seconds as {FTP_REMOTE_NAME}")
