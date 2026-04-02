@@ -35,8 +35,8 @@ LEFT_ANCHOR_RATIO = 0.84
 RIGHT_ANCHOR_RATIO = 0.14
 
 # Crop the outer edges a bit so both cameras blend into one continuous track view.
-CROP_LEFT = (0.03, 0.99, 0.03, 0.98)
-CROP_RIGHT = (0.01, 0.97, 0.03, 0.98)
+CROP_LEFT = (0.0, 1.0, 0.0, 1.0)
+CROP_RIGHT = (0.0, 1.0, 0.0, 1.0)
 ROTATE_LEFT_DEGREES = 90.0
 ROTATE_RIGHT_DEGREES = -90.0
 
