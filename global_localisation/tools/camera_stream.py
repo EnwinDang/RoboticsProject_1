@@ -23,8 +23,8 @@ aruco_params.adaptiveThreshWinSizeMax = 23
 aruco_params.adaptiveThreshWinSizeStep = 10
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
-PANEL_WIDTH = 540   # 1080 / 2
-PANEL_HEIGHT = 960  # 1920 / 2
+PANEL_WIDTH = 270   # 1080 / 4
+PANEL_HEIGHT = 480  # 1920 / 4
 TOTAL_WIDTH = PANEL_WIDTH * 2
 TOTAL_HEIGHT = PANEL_HEIGHT
 
