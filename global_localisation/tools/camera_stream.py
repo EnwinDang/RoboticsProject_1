@@ -29,6 +29,12 @@ TOTAL_WIDTH = PANEL_WIDTH * 2
 TOTAL_HEIGHT = PANEL_HEIGHT
 LABEL_STYLE = cv2.FONT_HERSHEY_SIMPLEX
 
+# Crop the outer edges a bit so both cameras blend into one continuous track view.
+CROP_LEFT = (0.04, 0.98, 0.04, 0.98)
+CROP_RIGHT = (0.02, 0.96, 0.04, 0.98)
+ROTATE_LEFT_DEGREES = -4.0
+ROTATE_RIGHT_DEGREES = 4.0
+
 cap1 = cv2.VideoCapture(CAMERA_INDEX_1, cv2.CAP_V4L2)
 cap2 = cv2.VideoCapture(CAMERA_INDEX_2, cv2.CAP_V4L2)
 
@@ -49,17 +55,43 @@ def detect_and_draw(frame):
     return frame
 
 
+def crop_frame(frame, crop_box):
+    x0, x1, y0, y1 = crop_box
+    height, width = frame.shape[:2]
+
+    left = max(0, int(width * x0))
+    right = min(width, int(width * x1))
+    top = max(0, int(height * y0))
+    bottom = min(height, int(height * y1))
+
+    return frame[top:bottom, left:right]
+
+
+def rotate_frame(frame, degrees):
+    if frame is None:
+        return None
+
+    height, width = frame.shape[:2]
+    center = (width / 2.0, height / 2.0)
+    matrix = cv2.getRotationMatrix2D(center, degrees, 1.0)
+    return cv2.warpAffine(frame, matrix, (width, height), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+
 def compose_frame(frame1, frame2):
     canvas = np.zeros((TOTAL_HEIGHT, TOTAL_WIDTH, 3), dtype=np.uint8)
 
     if frame1 is not None:
-        left = cv2.resize(frame1, (PANEL_WIDTH, PANEL_HEIGHT))
+        left = crop_frame(frame1, CROP_LEFT)
+        left = rotate_frame(left, ROTATE_LEFT_DEGREES)
+        left = cv2.resize(left, (PANEL_WIDTH, PANEL_HEIGHT))
         canvas[0:PANEL_HEIGHT, 0:PANEL_WIDTH] = left
         cv2.rectangle(canvas, (12, 12), (320, 58), (0, 0, 0), -1)
         cv2.putText(canvas, "LEFT", (20, 45), LABEL_STYLE, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 
     if frame2 is not None:
-        right = cv2.resize(frame2, (PANEL_WIDTH, PANEL_HEIGHT))
+        right = crop_frame(frame2, CROP_RIGHT)
+        right = rotate_frame(right, ROTATE_RIGHT_DEGREES)
+        right = cv2.resize(right, (PANEL_WIDTH, PANEL_HEIGHT))
         canvas[0:PANEL_HEIGHT, PANEL_WIDTH:TOTAL_WIDTH] = right
         cv2.rectangle(canvas, (PANEL_WIDTH + 12, 12), (PANEL_WIDTH + 320, 58), (0, 0, 0), -1)
         cv2.putText(canvas, "RIGHT", (PANEL_WIDTH + 20, 45), LABEL_STYLE, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
