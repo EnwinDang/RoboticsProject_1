@@ -7,7 +7,7 @@ from geometry_msgs.msg import Pose2D
 
 from vision.detector import ArucoDetector
 from mapping.homography import HomographyMapper
-from config import CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS, MQTT_BROKER, MQTT_PORT, MQTT_TOPIC_PREFIX, POSITION_THRESHOLD, ANGLE_THRESHOLD
+from config import CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS, MQTT_BROKER, MQTT_PORT, MQTT_TOPIC_PREFIX, POSITION_THRESHOLD, ANGLE_THRESHOLD, CAMERA_WIDTH, CAMERA_HEIGHT
 
 
 class LocalisationNode(Node):
@@ -29,7 +29,13 @@ def main():
     node = LocalisationNode()
 
     cap1 = cv2.VideoCapture(CAMERA_INDEX_1, cv2.CAP_V4L2)
+    cap1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    cap1.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+    cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
     cap2 = cv2.VideoCapture(CAMERA_INDEX_2, cv2.CAP_V4L2)
+    cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    cap2.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+    cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
 
     detector = ArucoDetector()
     mapper1 = HomographyMapper()

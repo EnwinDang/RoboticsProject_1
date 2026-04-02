@@ -27,6 +27,8 @@ from config import (
     CAMERA_INDEX_1,
     CAMERA_INDEX_2,
     CALIBRATION_IDS,
+    CAMERA_WIDTH,
+    CAMERA_HEIGHT,
     FTP_HOST as CONFIG_FTP_HOST,
     FTP_PASSWORD as CONFIG_FTP_PASSWORD,
     FTP_REMOTE_DIR as CONFIG_FTP_REMOTE_DIR,
@@ -163,7 +165,13 @@ def upload_frame(ftp, frame):
 
 def main():
     cap1 = cv2.VideoCapture(CAMERA_INDEX_1, cv2.CAP_V4L2)
+    cap1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    cap1.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+    cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
     cap2 = cv2.VideoCapture(CAMERA_INDEX_2, cv2.CAP_V4L2)
+    cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    cap2.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+    cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
 
     if not cap1.isOpened():
         print(f"Error: Could not open camera {CAMERA_INDEX_1}")
