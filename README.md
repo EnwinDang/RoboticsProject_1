@@ -70,6 +70,8 @@ Then restart:
 sudo systemctl restart mosquitto
 ```
 
+> Mosquitto is enabled on boot — no need to start it manually after the initial setup.
+
 ---
 
 ## Configuration
@@ -91,12 +93,20 @@ MQTT_TOPIC_PREFIX = "city/robots/tag"
 
 ## Running the System
 
-Source ROS2 and run from the project root:
+### One-time setup — auto-source ROS2 on login (per machine)
+
+If ROS2 is not automatically sourced on your machine, run this once:
 
 ```bash
-source /opt/ros/humble/setup.bash
-cd ~/RoboticsProject_1
-python3 global_localisation/main.py
+echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Run
+
+```bash
+cd ~/RoboticsProject_1/global_localisation
+python main.py
 ```
 
 ### Expected terminal output

@@ -1,13 +1,17 @@
 """
 Live camera stream viewable in browser.
 Run on Jetson: python tools/camera_stream.py
-Then open: http://jetson-dang.local:8080
+Then open: http://jetson-dang.local:5000
 """
+import sys
+import os
 import threading
 import cv2
 import cv2.aruco as aruco
 import numpy as np
 from flask import Flask, Response
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from config import CAMERA_INDEX_1, CAMERA_INDEX_2
 
 app = Flask(__name__)
@@ -114,5 +118,5 @@ if __name__ == "__main__":
     t = threading.Thread(target=capture_loop, daemon=True)
     t.start()
 
-    print(f"Streaming camera {CAMERA_INDEX_1} with camera {CAMERA_INDEX_2} overlay → http://0.0.0.0:8080")
-    app.run(host="0.0.0.0", port=8080)
+    print(f"Streaming cameras {CAMERA_INDEX_1} + {CAMERA_INDEX_2} (LEFT/RIGHT) → http://0.0.0.0:5000")
+    app.run(host="0.0.0.0", port=5000)
