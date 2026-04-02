@@ -32,8 +32,8 @@ LABEL_STYLE = cv2.FONT_HERSHEY_SIMPLEX
 # Crop the outer edges a bit so both cameras blend into one continuous track view.
 CROP_LEFT = (0.04, 0.98, 0.04, 0.98)
 CROP_RIGHT = (0.02, 0.96, 0.04, 0.98)
-ROTATE_LEFT_DEGREES = -90.0
-ROTATE_RIGHT_DEGREES = 90.0
+ROTATE_LEFT_DEGREES = 90.0
+ROTATE_RIGHT_DEGREES = -90.0
 
 cap1 = cv2.VideoCapture(CAMERA_INDEX_1, cv2.CAP_V4L2)
 cap2 = cv2.VideoCapture(CAMERA_INDEX_2, cv2.CAP_V4L2)
