@@ -152,7 +152,7 @@ def get_ftp_connection():
 
 
 def upload_frame(ftp, frame):
-    success, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+    success, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
     if not success:
         raise RuntimeError("Could not encode stitched frame as JPEG")
 
