@@ -18,7 +18,7 @@ MQTT_TOPIC_PREFIX = "city/robots/tag"
 FTP_HOST = "ftp.botopiabe.webhosting.be"
 FTP_USER = "dashboard@botopiabe"
 FTP_PASSWORD = "botopia123!"
-FTP_REMOTE_DIR = "/"
+FTP_REMOTE_DIR = "/cams"
 FTP_REMOTE_NAME = "camera_snapshot.jpg"
 SNAPSHOT_INTERVAL_SECONDS = 30
 
