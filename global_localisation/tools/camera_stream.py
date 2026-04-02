@@ -123,14 +123,14 @@ def capture_loop():
 
         if ret1:
             frame1, calib1 = detect_and_draw(frame1)
-            if calib1:
+            if calib1 and crop_box1 is None:
                 crop_box1 = compute_crop_box(calib1, frame1.shape)
         else:
             frame1 = None
 
         if ret2:
             frame2, calib2 = detect_and_draw(frame2)
-            if calib2:
+            if calib2 and crop_box2 is None:
                 crop_box2 = compute_crop_box(calib2, frame2.shape)
         else:
             frame2 = None
