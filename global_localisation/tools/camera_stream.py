@@ -23,9 +23,9 @@ aruco_params.adaptiveThreshWinSizeMax = 23
 aruco_params.adaptiveThreshWinSizeStep = 10
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
-PANEL_WIDTH = 1180
-PANEL_HEIGHT = 664
-OVERLAP_WIDTH = 260
+PANEL_WIDTH = 480
+PANEL_HEIGHT = 640
+OVERLAP_WIDTH = 60
 TOTAL_WIDTH = PANEL_WIDTH * 2 - OVERLAP_WIDTH
 TOTAL_HEIGHT = PANEL_HEIGHT
 LABEL_STYLE = cv2.FONT_HERSHEY_SIMPLEX
