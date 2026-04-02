@@ -116,7 +116,7 @@ def compose_frame(frame1, frame2):
             right_overlap = right[:, 0:OVERLAP_WIDTH]
             blended_overlap = cv2.addWeighted(left_overlap, 0.5, right_overlap, 0.5, 0)
             canvas[0:PANEL_HEIGHT, left_overlap_start:left_overlap_end] = blended_overlap
-            canvas[0:PANEL_HEIGHT, left_overlap_end:right_start] = right[:, OVERLAP_WIDTH:PANEL_WIDTH]
+            canvas[0:PANEL_HEIGHT, PANEL_WIDTH:TOTAL_WIDTH] = right[:, OVERLAP_WIDTH:PANEL_WIDTH]
         else:
             canvas[0:PANEL_HEIGHT, right_start:TOTAL_WIDTH] = right
 
