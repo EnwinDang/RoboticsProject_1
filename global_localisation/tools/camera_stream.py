@@ -10,7 +10,7 @@ import cv2.aruco as aruco
 from flask import Flask, Response
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from config import CAMERA_INDEX_1, CAMERA_INDEX_2
+from config import CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS
 
 app = Flask(__name__)
 
