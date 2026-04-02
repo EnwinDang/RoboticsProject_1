@@ -28,10 +28,13 @@ PANEL_HEIGHT = 720
 TOTAL_WIDTH = PANEL_WIDTH * 2
 TOTAL_HEIGHT = PANEL_HEIGHT
 
-CROP_LEFT = (0.0, 1.0, 0.0, 1.0)
-CROP_RIGHT = (0.0, 1.0, 0.0, 1.0)
 ROTATE_LEFT_DEGREES = 90.0
 ROTATE_RIGHT_DEGREES = -90.0
+CROP_PADDING = 0.05  # 5% padding around calibration markers
+
+# Cached crop regions per camera (x0, x1, y0, y1) in pixel coords
+crop_box1 = None
+crop_box2 = None
 
 def open_camera(index):
     cap = cv2.VideoCapture(index, cv2.CAP_V4L2)
@@ -50,6 +53,7 @@ frame_lock = threading.Lock()
 def detect_and_draw(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     corners, ids, _ = detector.detectMarkers(gray)
+    calib_corners = []
     if ids is not None:
         for i, corner in enumerate(corners):
             marker_id = int(ids[i][0])
@@ -57,17 +61,28 @@ def detect_and_draw(frame):
             pts = corner[0].astype(int)
             cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=3)
             cv2.putText(frame, str(marker_id), tuple(pts[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-    return frame
+            if marker_id in CALIBRATION_IDS:
+                calib_corners.append(corner[0])
+    return frame, calib_corners
 
 
-def crop_frame(frame, crop_box):
-    x0, x1, y0, y1 = crop_box
-    height, width = frame.shape[:2]
-    left = max(0, int(width * x0))
-    right = min(width, int(width * x1))
-    top = max(0, int(height * y0))
-    bottom = min(height, int(height * y1))
-    return frame[top:bottom, left:right]
+def compute_crop_box(calib_corners, frame_shape):
+    if not calib_corners:
+        return None
+    h, w = frame_shape[:2]
+    all_pts = np.concatenate(calib_corners, axis=0)
+    x0 = max(0, int(all_pts[:, 0].min() - w * CROP_PADDING))
+    x1 = min(w, int(all_pts[:, 0].max() + w * CROP_PADDING))
+    y0 = max(0, int(all_pts[:, 1].min() - h * CROP_PADDING))
+    y1 = min(h, int(all_pts[:, 1].max() + h * CROP_PADDING))
+    return (x0, x1, y0, y1)
+
+
+def crop_frame(frame, box):
+    if box is None:
+        return frame
+    x0, x1, y0, y1 = box
+    return frame[y0:y1, x0:x1]
 
 
 def rotate_frame(frame, degrees):
@@ -86,13 +101,13 @@ def compose_frame(frame1, frame2):
     canvas = np.zeros((TOTAL_HEIGHT, TOTAL_WIDTH, 3), dtype=np.uint8)
 
     if frame1 is not None:
-        left = crop_frame(frame1, CROP_LEFT)
+        left = crop_frame(frame1, crop_box1)
         left = rotate_frame(left, ROTATE_LEFT_DEGREES)
         left = cv2.resize(left, (PANEL_WIDTH, PANEL_HEIGHT))
         canvas[0:PANEL_HEIGHT, 0:PANEL_WIDTH] = left
 
     if frame2 is not None:
-        right = crop_frame(frame2, CROP_RIGHT)
+        right = crop_frame(frame2, crop_box2)
         right = rotate_frame(right, ROTATE_RIGHT_DEGREES)
         right = cv2.resize(right, (PANEL_WIDTH, PANEL_HEIGHT))
         canvas[0:PANEL_HEIGHT, PANEL_WIDTH:TOTAL_WIDTH] = right
@@ -101,18 +116,22 @@ def compose_frame(frame1, frame2):
 
 
 def capture_loop():
-    global latest_frame
+    global latest_frame, crop_box1, crop_box2
     while True:
         ret1, frame1 = cap1.read()
         ret2, frame2 = cap2.read()
 
         if ret1:
-            frame1 = detect_and_draw(frame1)
+            frame1, calib1 = detect_and_draw(frame1)
+            if calib1:
+                crop_box1 = compute_crop_box(calib1, frame1.shape)
         else:
             frame1 = None
 
         if ret2:
-            frame2 = detect_and_draw(frame2)
+            frame2, calib2 = detect_and_draw(frame2)
+            if calib2:
+                crop_box2 = compute_crop_box(calib2, frame2.shape)
         else:
             frame2 = None
 
