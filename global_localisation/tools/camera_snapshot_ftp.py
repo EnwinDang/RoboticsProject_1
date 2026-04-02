@@ -43,14 +43,13 @@ aruco_params.adaptiveThreshWinSizeMax = 23
 aruco_params.adaptiveThreshWinSizeStep = 10
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
-PANEL_WIDTH = 640
-PANEL_HEIGHT = 480
-OVERLAP_WIDTH = 80
-TOTAL_WIDTH = PANEL_WIDTH * 2 - OVERLAP_WIDTH
+PANEL_WIDTH = 480
+PANEL_HEIGHT = 640
+TOTAL_WIDTH = PANEL_WIDTH * 2
 TOTAL_HEIGHT = PANEL_HEIGHT
 
-CROP_LEFT = (0.03, 0.99, 0.03, 0.98)
-CROP_RIGHT = (0.01, 0.97, 0.03, 0.98)
+CROP_LEFT = (0.0, 1.0, 0.0, 1.0)
+CROP_RIGHT = (0.0, 1.0, 0.0, 1.0)
 ROTATE_LEFT_DEGREES = 90.0
 ROTATE_RIGHT_DEGREES = -90.0
 
@@ -88,10 +87,15 @@ def crop_frame(frame, crop_box):
 
 
 def rotate_frame(frame, degrees):
+    if frame is None:
+        return None
     height, width = frame.shape[:2]
     center = (width / 2.0, height / 2.0)
     matrix = cv2.getRotationMatrix2D(center, degrees, 1.0)
-    return cv2.warpAffine(frame, matrix, (width, height), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+    new_w, new_h = (height, width) if abs(degrees) == 90.0 else (width, height)
+    matrix[0, 2] += (new_w - width) / 2
+    matrix[1, 2] += (new_h - height) / 2
+    return cv2.warpAffine(frame, matrix, (new_w, new_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
 
 def compose_frame(frame1, frame2):
@@ -107,18 +111,7 @@ def compose_frame(frame1, frame2):
         right = crop_frame(frame2, CROP_RIGHT)
         right = rotate_frame(right, ROTATE_RIGHT_DEGREES)
         right = cv2.resize(right, (PANEL_WIDTH, PANEL_HEIGHT))
-        right_start = PANEL_WIDTH - OVERLAP_WIDTH
-        left_overlap_start = PANEL_WIDTH - OVERLAP_WIDTH
-        left_overlap_end = PANEL_WIDTH
-
-        if frame1 is not None:
-            left_overlap = canvas[0:PANEL_HEIGHT, left_overlap_start:left_overlap_end].copy()
-            right_overlap = right[:, 0:OVERLAP_WIDTH]
-            blended_overlap = cv2.addWeighted(left_overlap, 0.5, right_overlap, 0.5, 0)
-            canvas[0:PANEL_HEIGHT, left_overlap_start:left_overlap_end] = blended_overlap
-            canvas[0:PANEL_HEIGHT, PANEL_WIDTH:TOTAL_WIDTH] = right[:, OVERLAP_WIDTH:PANEL_WIDTH]
-        else:
-            canvas[0:PANEL_HEIGHT, right_start:TOTAL_WIDTH] = right
+        canvas[0:PANEL_HEIGHT, PANEL_WIDTH:TOTAL_WIDTH] = right
 
     return canvas
 
