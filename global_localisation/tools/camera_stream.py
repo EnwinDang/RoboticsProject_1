@@ -12,7 +12,7 @@ import numpy as np
 from flask import Flask, Response
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from config import CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS
+from config import CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS, CAMERA_WIDTH, CAMERA_HEIGHT
 
 app = Flask(__name__)
 
@@ -33,8 +33,15 @@ CROP_RIGHT = (0.0, 1.0, 0.0, 1.0)
 ROTATE_LEFT_DEGREES = 90.0
 ROTATE_RIGHT_DEGREES = -90.0
 
-cap1 = cv2.VideoCapture(CAMERA_INDEX_1, cv2.CAP_V4L2)
-cap2 = cv2.VideoCapture(CAMERA_INDEX_2, cv2.CAP_V4L2)
+def open_camera(index):
+    cap = cv2.VideoCapture(index, cv2.CAP_V4L2)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+    return cap
+
+cap1 = open_camera(CAMERA_INDEX_1)
+cap2 = open_camera(CAMERA_INDEX_2)
 
 latest_frame = None
 frame_lock = threading.Lock()

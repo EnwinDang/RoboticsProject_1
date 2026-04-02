@@ -9,6 +9,10 @@ CALIBRATION_IDS = [0, 1, 2, 3, 4, 5]
 CAMERA_INDEX_1 = 4  # left side
 CAMERA_INDEX_2 = 0  # right side
 
+# Camera resolution
+CAMERA_WIDTH = 1920
+CAMERA_HEIGHT = 1080
+
 # MQTT broker
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
