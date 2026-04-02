@@ -86,8 +86,7 @@ def compose_frame(frame1, frame2):
         left = rotate_frame(left, ROTATE_LEFT_DEGREES)
         left = cv2.resize(left, (PANEL_WIDTH, PANEL_HEIGHT))
         canvas[0:PANEL_HEIGHT, 0:PANEL_WIDTH] = left
-        cv2.rectangle(canvas, (12, 12), (320, 58), (0, 0, 0), -1)
-        cv2.putText(canvas, "LEFT", (20, 45), LABEL_STYLE, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+
 
     if frame2 is not None:
         right = crop_frame(frame2, CROP_RIGHT)
@@ -108,8 +107,7 @@ def compose_frame(frame1, frame2):
         else:
             canvas[0:PANEL_HEIGHT, right_start:TOTAL_WIDTH] = right
 
-        cv2.rectangle(canvas, (PANEL_WIDTH + 12, 12), (PANEL_WIDTH + 320, 58), (0, 0, 0), -1)
-        cv2.putText(canvas, "RIGHT", (PANEL_WIDTH + 20, 45), LABEL_STYLE, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+
 
     return canvas
 
