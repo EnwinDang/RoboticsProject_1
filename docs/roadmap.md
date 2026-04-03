@@ -4,73 +4,22 @@ This document outlines the planned improvements and future extensions of the rob
 
 ---
 
-# Current Implementation
-
-Completed features:
+# Completed
 
 - Camera streaming using OpenCV
-- ROS2 image publishing
-- Homography-based map correction
-- ArUco robot detection
-- Robot pose estimation (x, y, theta)
-- ROS2 topic publishing
+- ROS2 pose publishing (`/robots/pose`)
+- Homography-based pixel → world coordinate mapping
+- ArUco robot detection and pose estimation (x, y, theta)
+- Event-driven MQTT publishing (`city/robots/tag{id}`)
+- Dual camera support with seamless top-down world view
+- FTP snapshot upload (periodic world-view image)
+- Focus and sharpness tuning via v4l2-ctl
 
 ---
 
-# Next Features
+# Planned
 
-## MQTT Robot Communication
-
-Robot positions will be broadcast through MQTT.
-
-Example topics:
-
-```
-city/robots/tag10
-city/robots/tag11
-```
-
-Example message:
-
-```
-{
-  "x": 2.14,
-  "y": 1.39,
-  "theta": 1.57
-}
-```
-
-This allows robots to **share positions in real time**.
-
----
-
-# Multi-Camera Support
-
-To cover the entire robot city:
-
-- two cameras will be used
-- each camera observes half of the environment
-
-```
-Camera 1 → left side
-Camera 2 → right side
-```
-
----
-
-# Map Merging
-
-A new ROS2 node will merge both homography outputs.
-
-```
-map_merge_node
-```
-
-This produces a **single global map**.
-
----
-
-# Performance Optimisation
+## Performance Optimisation
 
 Target performance:
 
@@ -84,11 +33,11 @@ Optimisations may include:
 
 - GPU acceleration on Jetson
 - multi-threaded detection
-- image downscaling
+- image downscaling for detection pass
 
 ---
 
-# Multi-Robot Features
+## Multi-Robot Features
 
 Future capabilities:
 
@@ -107,4 +56,3 @@ Robots will be able to:
 - know each other's positions
 - coordinate movements
 - avoid collisions
-

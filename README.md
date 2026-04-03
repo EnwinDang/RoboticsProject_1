@@ -166,7 +166,8 @@ global_localisation/
 └── tools/
     ├── aruco_generate.py           # Generate ArUco marker images
     ├── generate_calibration_pdf.py # Generate printable ArUco PDF
-    └── camera_stream.py            # Live camera stream in browser (debugging)
+    ├── camera_stream.py            # Live top-down world-view stream in browser
+    └── camera_snapshot_ftp.py      # Upload top-down world-view image to FTP every 30s
 ```
 
 ---
@@ -175,11 +176,12 @@ global_localisation/
 
 ### Live camera stream
 
-View two equal camera panels side by side in a fixed 1920x540 browser stream with ArUco detections overlaid:
+Renders both cameras as a single top-down world view (1200×600 px + padding) with ArUco detections overlaid. The view is black until enough calibration markers are detected to compute the homography.
 
 ```bash
 source .venv/bin/activate
-python3 global_localisation/tools/camera_stream.py 0   # or 2 for left camera
+cd global_localisation
+python tools/camera_stream.py
 ```
 
 Then open `http://jetson-dang.local:8080` in your browser.
@@ -199,7 +201,7 @@ At least 4 calibration markers (IDs 0–5) must be visible to the active camera 
 
 ### FTP snapshot upload
 
-To capture both cameras as one stitched image and upload it every 30 seconds, run:
+To capture both cameras as one top-down world-view image and upload it every 30 seconds, run:
 
 ```bash
 python3 global_localisation/tools/camera_snapshot_ftp.py
@@ -216,4 +218,3 @@ FTP settings are read from `global_localisation/config.py`, with environment var
 - `docs/calibration.md` — marker layout and homography calibration
 - `docs/mqtt.md` — MQTT interface for other teams
 - `docs/roadmap.md` — planned features
-- `docs/next_session.md` — TODO for next session

@@ -16,13 +16,13 @@ Height = 3 meters
 The processed map image is scaled to:
 
 ```
-600 × 300 pixels
+1200 × 600 pixels
 ```
 
 Which corresponds to:
 
 ```
-100 pixels = 1 meter
+200 pixels = 1 meter
 ```
 
 ---
@@ -31,16 +31,16 @@ Which corresponds to:
 
 Two USB cameras are mounted overhead, each covering half of the map.
 
-| Camera | Device      | Coverage         |
-|--------|-------------|------------------|
-| Cam 1  | /dev/video2 | Left side (x: 0–3m) |
-| Cam 2  | /dev/video0 | Right side (x: 3–6m) |
+| Camera | Device       | Coverage              |
+|--------|--------------|-----------------------|
+| Cam 1  | /dev/video4  | Right side (x: 3–6m) |
+| Cam 2  | /dev/video0  | Left side (x: 0–3m)  |
 
 Both cameras are configured in `config.py`:
 
 ```python
-CAMERA_INDEX_1 = 2  # left side
-CAMERA_INDEX_2 = 0  # right side
+CAMERA_INDEX_1 = 4  # right side
+CAMERA_INDEX_2 = 0  # left side
 ```
 
 ---

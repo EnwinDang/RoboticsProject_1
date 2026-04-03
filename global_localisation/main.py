@@ -1,4 +1,5 @@
 import json
+import threading
 import cv2
 import paho.mqtt.client as mqtt
 import rclpy
@@ -22,6 +23,17 @@ def publish_pose(node, robot_id, x, y, theta):
     msg.y = float(y)
     msg.theta = float(theta)
     node.pose_publisher.publish(msg)
+
+
+def process_camera(cap, detector, mapper, result, key):
+    """Capture and detect in one camera; store detections in result[key]."""
+    ret, frame = cap.read()
+    if not ret:
+        result[key] = []
+        return
+    detections = detector.detect(frame)
+    mapper.compute_homography(detections)
+    result[key] = detections
 
 
 def main():
@@ -53,34 +65,31 @@ def main():
     active_robots = {}
 
     while True:
-        ret1, frame1 = cap1.read()
-        ret2, frame2 = cap2.read()
+        result = {}
+        t1 = threading.Thread(target=process_camera, args=(cap1, detector, mapper1, result, "cam1"))
+        t2 = threading.Thread(target=process_camera, args=(cap2, detector, mapper2, result, "cam2"))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
 
         poses = {}
 
-        # process camera 1
-        if ret1:
-            detections1 = detector.detect(frame1)
-            mapper1.compute_homography(detections1)
-            for det in detections1:
-                if det["id"] in CALIBRATION_IDS:
-                    continue
-                world = mapper1.pixel_to_world(det["x_pixel"], det["y_pixel"])
-                if world is not None:
-                    poses[det["id"]] = (world[0], world[1], det["theta_image"])
+        for det in result.get("cam1", []):
+            if det["id"] in CALIBRATION_IDS:
+                continue
+            world = mapper1.pixel_to_world(det["x_pixel"], det["y_pixel"])
+            if world is not None:
+                poses[det["id"]] = (world[0], world[1], det["theta_image"])
 
-        # process camera 2 (only if cam1 didn't see this robot)
-        if ret2:
-            detections2 = detector.detect(frame2)
-            mapper2.compute_homography(detections2)
-            for det in detections2:
-                if det["id"] in CALIBRATION_IDS:
-                    continue
-                if det["id"] in poses:
-                    continue
-                world = mapper2.pixel_to_world(det["x_pixel"], det["y_pixel"])
-                if world is not None:
-                    poses[det["id"]] = (world[0], world[1], det["theta_image"])
+        for det in result.get("cam2", []):
+            if det["id"] in CALIBRATION_IDS:
+                continue
+            if det["id"] in poses:
+                continue
+            world = mapper2.pixel_to_world(det["x_pixel"], det["y_pixel"])
+            if world is not None:
+                poses[det["id"]] = (world[0], world[1], det["theta_image"])
 
         # event-driven publishing
         for robot_id, (x_w, y_w, theta) in poses.items():
@@ -89,7 +98,6 @@ def main():
             theta = float(theta)
 
             if robot_id not in active_robots:
-                # ADD
                 active_robots[robot_id] = (x_w, y_w, theta)
                 event = "ADD"
             else:
@@ -100,14 +108,12 @@ def main():
                     active_robots[robot_id] = (x_w, y_w, theta)
                     event = "UPDATE"
                 else:
-                    continue  # no significant change, skip
+                    continue
 
             print(f"[{event}] ID {robot_id} → World: ({x_w:.2f}, {y_w:.2f}), theta: {theta:.2f}")
 
-            # ROS2 publish
             publish_pose(node, robot_id, x_w, y_w, theta)
 
-            # MQTT publish
             topic = f"{MQTT_TOPIC_PREFIX}{robot_id}"
             payload = json.dumps({
                 "x": round(x_w, 3),
@@ -122,7 +128,7 @@ def main():
             del active_robots[robot_id]
             print(f"[REMOVE] ID {robot_id}")
 
-        if not ret1 and not ret2:
+        if not cap1.isOpened() and not cap2.isOpened():
             break
 
     cap1.release()

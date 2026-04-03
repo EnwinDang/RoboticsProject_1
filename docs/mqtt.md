@@ -85,7 +85,7 @@ def on_message(client, userdata, msg):
     robot_id = msg.topic.split("tag")[-1]
     print(f"Robot {robot_id} → x={data['x']}, y={data['y']}, theta={data['theta']}")
 
-client = mqtt.Client()
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.on_message = on_message
 client.connect("jetson-dang.local", 1883)
 client.subscribe("city/robots/#")

@@ -82,23 +82,29 @@ def render_to_world(frame, H):
     return cv2.warpPerspective(frame, S @ H, (CANVAS_WIDTH, CANVAS_HEIGHT))
 
 
+def process_camera(cap, mapper, result, key):
+    ret, frame = cap.read()
+    if not ret:
+        result[key] = None
+        return
+    frame, detections = detect_and_draw(frame)
+    mapper.compute_homography(detections)
+    result[key] = frame
+
+
 def capture_loop():
     global latest_frame
     while True:
-        ret1, frame1 = cap1.read()
-        ret2, frame2 = cap2.read()
+        result = {}
+        t1 = threading.Thread(target=process_camera, args=(cap1, mapper1, result, "frame1"))
+        t2 = threading.Thread(target=process_camera, args=(cap2, mapper2, result, "frame2"))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
 
-        if ret1:
-            frame1, det1 = detect_and_draw(frame1)
-            mapper1.compute_homography(det1)
-        else:
-            frame1, det1 = None, []
-
-        if ret2:
-            frame2, det2 = detect_and_draw(frame2)
-            mapper2.compute_homography(det2)
-        else:
-            frame2, det2 = None, []
+        frame1 = result.get("frame1")
+        frame2 = result.get("frame2")
 
         world1 = render_to_world(frame1, mapper1.H)
         world2 = render_to_world(frame2, mapper2.H)

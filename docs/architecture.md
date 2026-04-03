@@ -2,69 +2,39 @@
 
 This project implements a **vision-based global localisation system** for multiple mobile robots using **ArUco markers, OpenCV, and ROS2**.
 
-The system runs on a **Jetson Orin Nano** and processes camera images to detect robots and estimate their positions in a shared map.
+The system runs on a **Jetson Orin Nano** with two USB cameras and processes camera images to detect robots and estimate their positions in a shared map.
 
 ---
 
 # Processing Pipeline
 
-The localisation pipeline is composed of several ROS2 nodes:
+All processing runs in a single `main.py` loop:
 
 ```
-camera_node
-      ↓
-/camera/image
-      ↓
-homography_node
-      ↓
-/map/image
-      ↓
-robot_detector_node
-      ↓
-/robots/pose
+Camera 1 (video4)       Camera 2 (video0)
+       ↓                        ↓
+ ArUco detection          ArUco detection
+       ↓                        ↓
+ HomographyMapper 1       HomographyMapper 2
+       ↓                        ↓
+ pixel → world coords     pixel → world coords
+              ↘          ↙
+           pose merge
+               ↓
+        /robots/pose  (ROS2)
+        city/robots/tag{id}  (MQTT)
 ```
-
-Each node performs a specific task.
-
-| Node                | Responsibility                                |
-| ------------------- | --------------------------------------------- |
-| camera_node         | Captures frames from the USB camera           |
-| homography_node     | Converts camera perspective to a top-down map |
-| robot_detector_node | Detects robot ArUco markers                   |
-| robot_tracker_node  | Tracks robots and publishes pose              |
 
 ---
 
 # Data Flow
 
-1. The **camera node** captures images from the USB camera.
-2. Images are published to the ROS2 topic:
-
-```
-/camera/image
-```
-
-3. The **homography node** corrects the camera perspective using calibration markers.
-
-This produces a **top-down map view**:
-
-```
-/map/image
-```
-
-4. The **robot detector node** detects robot ArUco markers and calculates:
-
-```
-x position
-y position
-theta (orientation)
-```
-
-5. The robot pose is published via:
-
-```
-/robots/pose
-```
+1. Both cameras capture frames simultaneously at 2560×1440 (MJPG).
+2. ArUco markers are detected in each frame.
+3. Calibration markers (IDs 0–5) are used to compute a homography per camera.
+4. Robot markers (IDs 10+) are mapped to world coordinates using the homography.
+5. Camera 1 has priority; camera 2 only fills in robots not seen by camera 1.
+6. Poses are published event-driven (ADD / UPDATE / REMOVE) via ROS2 and MQTT.
 
 ---
 
@@ -76,8 +46,6 @@ Robot pose uses:
 (x, y, θ)
 ```
 
-Where:
-
 | Variable | Meaning                      |
 | -------- | ---------------------------- |
 | x        | robot position in meters     |
@@ -88,21 +56,18 @@ Where:
 
 # System Hardware
 
-The system runs on:
-
 - **Jetson Orin Nano**
-- **USB camera** mounted above the map
-- **Mobile robots with ArUco markers**
+- **2x USB cameras** mounted overhead (`/dev/video4` left, `/dev/video0` right)
+- **Mobile robots with ArUco markers** (IDs 10+)
+- **6 fixed calibration markers** (IDs 0–5)
 
 ---
 
 # ROS2 Topics
 
-| Topic         | Type                 | Description              |
-| ------------- | -------------------- | ------------------------ |
-| /camera/image | sensor_msgs/Image    | Raw camera image         |
-| /map/image    | sensor_msgs/Image    | Homography corrected map |
-| /robots/pose  | geometry_msgs/Pose2D | Robot pose               |
+| Topic        | Type                 | Description    |
+|--------------|----------------------|----------------|
+| /robots/pose | geometry_msgs/Pose2D | Robot pose     |
 
 ---
 
@@ -110,37 +75,20 @@ The system runs on:
 
 The architecture is designed to:
 
-- support multiple robots
-- allow real-time localisation
-- allow robots to share positions
-- scale to multiple cameras
+- support multiple robots simultaneously
+- allow real-time localisation across the full 6m × 3m map
+- allow robots to share positions via MQTT
+- render a seamless top-down world view from two cameras
 
 ---
 
-# Future Multi-Camera Architecture
+# Multi-Camera World View
 
-To cover the full **6m × 3m map**, the system will later support **two cameras**.
-
-Each camera will process half of the environment.
+Both cameras are rendered into a single top-down canvas (1200×600 px, 200 px/m) using `cv2.warpPerspective`. Each camera owns its half of the canvas — the split is at x = 3m.
 
 ```
-camera_node_1          camera_node_2
-      ↓                      ↓
-/camera1/image        /camera2/image
-      ↓                      ↓
-homography_node_1    homography_node_2
-      ↓                      ↓
-/map1/image           /map2/image
-        \              /
-         \            /
-          map_merge_node
-                ↓
-             /map/full
-                ↓
-        robot_detector_node
-                ↓
-           /robots/pose
+Camera 2 (video0)  │  Camera 1 (video4)
+   x: 0–3m         │     x: 3–6m
 ```
 
-This allows full map coverage and improved robot tracking.
-
+This view is available live via `tools/camera_stream.py` and as periodic FTP snapshots via `tools/camera_snapshot_ftp.py`.
