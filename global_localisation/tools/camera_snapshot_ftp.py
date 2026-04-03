@@ -1,5 +1,6 @@
 """
-Capture both cameras, stitch them into one image, and upload it to FTP every 30 seconds.
+Capture both cameras, render them into a single top-down world view, and upload
+it to FTP every 30 seconds.
 
 The remote filename is reused on every upload, so the previous image is overwritten.
 
@@ -30,6 +31,8 @@ from config import (
     CALIBRATION_IDS,
     CAMERA_WIDTH,
     CAMERA_HEIGHT,
+    WORLD_WIDTH,
+    WORLD_HEIGHT,
     FTP_HOST as CONFIG_FTP_HOST,
     FTP_PASSWORD as CONFIG_FTP_PASSWORD,
     FTP_REMOTE_DIR as CONFIG_FTP_REMOTE_DIR,
@@ -37,6 +40,7 @@ from config import (
     FTP_USER as CONFIG_FTP_USER,
     SNAPSHOT_INTERVAL_SECONDS as CONFIG_SNAPSHOT_INTERVAL_SECONDS,
 )
+from mapping.homography import HomographyMapper
 
 
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
@@ -46,15 +50,13 @@ aruco_params.adaptiveThreshWinSizeMax = 23
 aruco_params.adaptiveThreshWinSizeStep = 10
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
-PANEL_WIDTH = 480
-PANEL_HEIGHT = 640
-TOTAL_WIDTH = PANEL_WIDTH * 2
-TOTAL_HEIGHT = PANEL_HEIGHT
+# World canvas: 200 px per metre → 1200 × 600
+WORLD_SCALE = 200
+CANVAS_WIDTH = int(WORLD_WIDTH * WORLD_SCALE)
+CANVAS_HEIGHT = int(WORLD_HEIGHT * WORLD_SCALE)
 
-CROP_LEFT = (0.0, 1.0, 0.0, 1.0)
-CROP_RIGHT = (0.0, 1.0, 0.0, 1.0)
-ROTATE_LEFT_DEGREES = 90.0
-ROTATE_RIGHT_DEGREES = -90.0
+mapper1 = HomographyMapper()
+mapper2 = HomographyMapper()
 
 FTP_HOST = os.environ.get("FTP_HOST", CONFIG_FTP_HOST)
 FTP_USER = os.environ.get("FTP_USER", CONFIG_FTP_USER)
@@ -65,75 +67,57 @@ SNAPSHOT_INTERVAL_SECONDS = float(os.environ.get("SNAPSHOT_INTERVAL_SECONDS", st
 
 
 def detect_and_draw(frame):
+    """Detect ArUco markers, annotate frame, return (frame, detections)."""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     corners, ids, _ = detector.detectMarkers(gray)
+    detections = []
     if ids is not None:
         for i, corner in enumerate(corners):
             marker_id = int(ids[i][0])
             color = (0, 0, 255) if marker_id in CALIBRATION_IDS else (0, 255, 0)
             pts = corner[0].astype(int)
+            cx = int(corner[0][:, 0].mean())
+            cy = int(corner[0][:, 1].mean())
             cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=3)
             cv2.putText(frame, str(marker_id), tuple(pts[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-    return frame
+            detections.append({"id": marker_id, "x_pixel": cx, "y_pixel": cy})
+    return frame, detections
 
 
-def crop_frame(frame, crop_box):
-    x0, x1, y0, y1 = crop_box
-    height, width = frame.shape[:2]
-
-    left = max(0, int(width * x0))
-    right = min(width, int(width * x1))
-    top = max(0, int(height * y0))
-    bottom = min(height, int(height * y1))
-
-    return frame[top:bottom, left:right]
+def render_to_world(frame, H):
+    """Warp camera frame into world canvas using homography (pixel → world metres)."""
+    if H is None or frame is None:
+        return np.zeros((CANVAS_HEIGHT, CANVAS_WIDTH, 3), dtype=np.uint8)
+    S = np.array([[WORLD_SCALE, 0, 0],
+                  [0, WORLD_SCALE, 0],
+                  [0, 0,           1]], dtype=np.float64)
+    return cv2.warpPerspective(frame, S @ H, (CANVAS_WIDTH, CANVAS_HEIGHT))
 
 
-def rotate_frame(frame, degrees):
-    if frame is None:
-        return None
-    height, width = frame.shape[:2]
-    center = (width / 2.0, height / 2.0)
-    matrix = cv2.getRotationMatrix2D(center, degrees, 1.0)
-    new_w, new_h = (height, width) if abs(degrees) == 90.0 else (width, height)
-    matrix[0, 2] += (new_w - width) / 2
-    matrix[1, 2] += (new_h - height) / 2
-    return cv2.warpAffine(frame, matrix, (new_w, new_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-
-
-def compose_frame(frame1, frame2):
-    canvas = np.zeros((TOTAL_HEIGHT, TOTAL_WIDTH, 3), dtype=np.uint8)
-
-    if frame1 is not None:
-        left = crop_frame(frame1, CROP_LEFT)
-        left = rotate_frame(left, ROTATE_LEFT_DEGREES)
-        left = cv2.resize(left, (PANEL_WIDTH, PANEL_HEIGHT))
-        canvas[0:PANEL_HEIGHT, 0:PANEL_WIDTH] = left
-
-    if frame2 is not None:
-        right = crop_frame(frame2, CROP_RIGHT)
-        right = rotate_frame(right, ROTATE_RIGHT_DEGREES)
-        right = cv2.resize(right, (PANEL_WIDTH, PANEL_HEIGHT))
-        canvas[0:PANEL_HEIGHT, PANEL_WIDTH:TOTAL_WIDTH] = right
-
-    return canvas
-
-
-def capture_frame(cap1, cap2):
+def capture_world_frame(cap1, cap2):
+    """Read both cameras and return a stitched top-down world canvas."""
     ret1, frame1 = cap1.read()
     ret2, frame2 = cap2.read()
 
     if ret1:
-        frame1 = detect_and_draw(frame1)
+        frame1, det1 = detect_and_draw(frame1)
+        mapper1.compute_homography(det1)
     else:
-        frame1 = None
+        frame1, det1 = None, []
 
     if ret2:
-        frame2 = detect_and_draw(frame2)
+        frame2, det2 = detect_and_draw(frame2)
+        mapper2.compute_homography(det2)
     else:
-        frame2 = None
+        frame2, det2 = None, []
 
-    return compose_frame(frame1, frame2)
+    world1 = render_to_world(frame1, mapper1.H)
+    world2 = render_to_world(frame2, mapper2.H)
+
+    canvas = world2.copy()
+    mask = np.any(world1 > 0, axis=2)
+    canvas[mask] = world1[mask]
+    return canvas
 
 
 def get_ftp_connection():
@@ -157,7 +141,7 @@ def get_ftp_connection():
 def upload_frame(ftp, frame):
     success, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
     if not success:
-        raise RuntimeError("Could not encode stitched frame as JPEG")
+        raise RuntimeError("Could not encode world frame as JPEG")
 
     buffer = io.BytesIO(encoded.tobytes())
     buffer.seek(0)
@@ -174,10 +158,11 @@ def main():
     cap2.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
     cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
 
-    # Set focus via v4l2-ctl for both cameras
+    # Set focus and sharpness via v4l2-ctl for both cameras
     for dev in [f"/dev/video{CAMERA_INDEX_1}", f"/dev/video{CAMERA_INDEX_2}"]:
         subprocess.run(["v4l2-ctl", "-d", dev, "-c", "focus_automatic_continuous=0"], check=False)
         subprocess.run(["v4l2-ctl", "-d", dev, "-c", "focus_absolute=10"], check=False)
+        subprocess.run(["v4l2-ctl", "-d", dev, "-c", "sharpness=255"], check=False)
 
     if not cap1.isOpened():
         print(f"Error: Could not open camera {CAMERA_INDEX_1}")
@@ -186,17 +171,17 @@ def main():
     if not cap1.isOpened() and not cap2.isOpened():
         raise SystemExit(1)
 
-    # Warm up cameras — discard first frames so exposure/focus stabilises
+    # Warm up cameras and build homography during warmup
+    print("Warming up cameras and computing homography...")
     for _ in range(120):
-        cap1.read()
-        cap2.read()
+        capture_world_frame(cap1, cap2)
 
     ftp = get_ftp_connection()
-    print(f"Uploading stitched camera image every {SNAPSHOT_INTERVAL_SECONDS:.0f} seconds as {FTP_REMOTE_NAME}")
+    print(f"Uploading world-view image every {SNAPSHOT_INTERVAL_SECONDS:.0f} seconds as {FTP_REMOTE_NAME}")
 
     try:
         while True:
-            frame = capture_frame(cap1, cap2)
+            frame = capture_world_frame(cap1, cap2)
             upload_frame(ftp, frame)
             print(f"Uploaded {FTP_REMOTE_NAME} to {FTP_HOST}")
             time.sleep(SNAPSHOT_INTERVAL_SECONDS)

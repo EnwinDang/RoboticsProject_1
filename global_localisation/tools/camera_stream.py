@@ -1,5 +1,5 @@
 """
-Live dual-camera stream viewable in browser.
+Live dual-camera world-view stream viewable in browser.
 Run on Jetson: python tools/camera_stream.py
 Then open: http://jetson-dang.local:8080
 """
@@ -12,7 +12,11 @@ import numpy as np
 from flask import Flask, Response
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from config import CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS, CAMERA_WIDTH, CAMERA_HEIGHT
+from config import (
+    CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS,
+    CAMERA_WIDTH, CAMERA_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT,
+)
+from mapping.homography import HomographyMapper
 
 app = Flask(__name__)
 
@@ -23,13 +27,14 @@ aruco_params.adaptiveThreshWinSizeMax = 23
 aruco_params.adaptiveThreshWinSizeStep = 10
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
-PANEL_WIDTH = 640   # 2 panels = 1280 total width
-PANEL_HEIGHT = 720
-TOTAL_WIDTH = PANEL_WIDTH * 2
-TOTAL_HEIGHT = PANEL_HEIGHT
+# World canvas: 200 px per metre → 1200 × 600
+WORLD_SCALE = 200
+CANVAS_WIDTH = int(WORLD_WIDTH * WORLD_SCALE)
+CANVAS_HEIGHT = int(WORLD_HEIGHT * WORLD_SCALE)
 
-ROTATE_LEFT_DEGREES = 90.0
-ROTATE_RIGHT_DEGREES = -90.0
+mapper1 = HomographyMapper()
+mapper2 = HomographyMapper()
+
 
 def open_camera(index):
     cap = cv2.VideoCapture(index, cv2.CAP_V4L2)
@@ -40,6 +45,7 @@ def open_camera(index):
     cap.set(cv2.CAP_PROP_FOCUS, 10)
     return cap
 
+
 cap1 = open_camera(CAMERA_INDEX_1)
 cap2 = open_camera(CAMERA_INDEX_2)
 
@@ -48,44 +54,31 @@ frame_lock = threading.Lock()
 
 
 def detect_and_draw(frame):
+    """Detect ArUco markers, annotate frame, return (frame, detections)."""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     corners, ids, _ = detector.detectMarkers(gray)
+    detections = []
     if ids is not None:
         for i, corner in enumerate(corners):
             marker_id = int(ids[i][0])
             color = (0, 0, 255) if marker_id in CALIBRATION_IDS else (0, 255, 0)
             pts = corner[0].astype(int)
+            cx = int(corner[0][:, 0].mean())
+            cy = int(corner[0][:, 1].mean())
             cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=3)
             cv2.putText(frame, str(marker_id), tuple(pts[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-    return frame
+            detections.append({"id": marker_id, "x_pixel": cx, "y_pixel": cy})
+    return frame, detections
 
 
-def rotate_frame(frame, degrees):
-    if frame is None:
-        return None
-    height, width = frame.shape[:2]
-    center = (width / 2.0, height / 2.0)
-    matrix = cv2.getRotationMatrix2D(center, degrees, 1.0)
-    new_w, new_h = (height, width) if abs(degrees) == 90.0 else (width, height)
-    matrix[0, 2] += (new_w - width) / 2
-    matrix[1, 2] += (new_h - height) / 2
-    return cv2.warpAffine(frame, matrix, (new_w, new_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-
-
-def compose_frame(frame1, frame2):
-    canvas = np.zeros((TOTAL_HEIGHT, TOTAL_WIDTH, 3), dtype=np.uint8)
-
-    if frame1 is not None:
-        left = rotate_frame(frame1, ROTATE_LEFT_DEGREES)
-        left = cv2.resize(left, (PANEL_WIDTH, PANEL_HEIGHT))
-        canvas[0:PANEL_HEIGHT, 0:PANEL_WIDTH] = left
-
-    if frame2 is not None:
-        right = rotate_frame(frame2, ROTATE_RIGHT_DEGREES)
-        right = cv2.resize(right, (PANEL_WIDTH, PANEL_HEIGHT))
-        canvas[0:PANEL_HEIGHT, PANEL_WIDTH:TOTAL_WIDTH] = right
-
-    return canvas
+def render_to_world(frame, H):
+    """Warp camera frame into world canvas using homography (pixel → world metres)."""
+    if H is None or frame is None:
+        return np.zeros((CANVAS_HEIGHT, CANVAS_WIDTH, 3), dtype=np.uint8)
+    S = np.array([[WORLD_SCALE, 0, 0],
+                  [0, WORLD_SCALE, 0],
+                  [0, 0,           1]], dtype=np.float64)
+    return cv2.warpPerspective(frame, S @ H, (CANVAS_WIDTH, CANVAS_HEIGHT))
 
 
 def capture_loop():
@@ -95,19 +88,27 @@ def capture_loop():
         ret2, frame2 = cap2.read()
 
         if ret1:
-            frame1 = detect_and_draw(frame1)
+            frame1, det1 = detect_and_draw(frame1)
+            mapper1.compute_homography(det1)
         else:
-            frame1 = None
+            frame1, det1 = None, []
 
         if ret2:
-            frame2 = detect_and_draw(frame2)
+            frame2, det2 = detect_and_draw(frame2)
+            mapper2.compute_homography(det2)
         else:
-            frame2 = None
+            frame2, det2 = None, []
 
-        combined = compose_frame(frame1, frame2)
+        world1 = render_to_world(frame1, mapper1.H)
+        world2 = render_to_world(frame2, mapper2.H)
+
+        # Composite: camera 2 as base, camera 1 on top where it has content
+        canvas = world2.copy()
+        mask = np.any(world1 > 0, axis=2)
+        canvas[mask] = world1[mask]
 
         with frame_lock:
-            latest_frame = combined
+            latest_frame = canvas
 
 
 def generate_frames():
@@ -142,5 +143,5 @@ if __name__ == "__main__":
     t = threading.Thread(target=capture_loop, daemon=True)
     t.start()
 
-    print(f"Streaming cameras {CAMERA_INDEX_1} + {CAMERA_INDEX_2} → http://0.0.0.0:8080")
+    print(f"World-view stream → http://0.0.0.0:8080  ({CANVAS_WIDTH}×{CANVAS_HEIGHT}px)")
     app.run(host="0.0.0.0", port=8080)
