@@ -14,7 +14,7 @@ class ArucoDetector:
         parameters.perspectiveRemovePixelPerCell = 8
         parameters.minOtsuStdDev = 1.0
         self.detector = aruco.ArucoDetector(aruco_dict, parameters)
-        self.clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        self.clahe = cv2.createCLAHE(clipLimit=8.0, tileGridSize=(8, 8))
 
     def detect(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

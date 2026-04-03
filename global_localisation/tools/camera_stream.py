@@ -29,7 +29,7 @@ aruco_params.minMarkerPerimeterRate = 0.01
 aruco_params.perspectiveRemovePixelPerCell = 8
 aruco_params.minOtsuStdDev = 1.0
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
-clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+clahe = cv2.createCLAHE(clipLimit=8.0, tileGridSize=(8, 8))
 
 # World canvas: 200 px per metre → 1200 × 600 + padding
 WORLD_SCALE = 200
