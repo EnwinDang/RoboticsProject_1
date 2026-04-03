@@ -102,13 +102,15 @@ def capture_world_frame(cap1, cap2):
 
     if ret1:
         frame1, det1 = detect_and_draw(frame1)
-        mapper1.compute_homography(det1)
+        if mapper1.H is None:
+            mapper1.compute_homography(det1)
     else:
         frame1, det1 = None, []
 
     if ret2:
         frame2, det2 = detect_and_draw(frame2)
-        mapper2.compute_homography(det2)
+        if mapper2.H is None:
+            mapper2.compute_homography(det2)
     else:
         frame2, det2 = None, []
 

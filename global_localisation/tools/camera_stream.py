@@ -88,7 +88,8 @@ def process_camera(cap, mapper, result, key):
         result[key] = None
         return
     frame, detections = detect_and_draw(frame)
-    mapper.compute_homography(detections)
+    if mapper.H is None:
+        mapper.compute_homography(detections)
     result[key] = frame
 
 

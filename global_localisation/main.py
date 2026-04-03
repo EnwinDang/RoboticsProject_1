@@ -32,7 +32,8 @@ def process_camera(cap, detector, mapper, result, key):
         result[key] = []
         return
     detections = detector.detect(frame)
-    mapper.compute_homography(detections)
+    if mapper.H is None:
+        mapper.compute_homography(detections)
     result[key] = detections
 
 
