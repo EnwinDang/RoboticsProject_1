@@ -50,10 +50,11 @@ aruco_params.adaptiveThreshWinSizeMax = 23
 aruco_params.adaptiveThreshWinSizeStep = 10
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
-# World canvas: 200 px per metre → 1200 × 600
+# World canvas: 200 px per metre → 1200 × 600 + padding
 WORLD_SCALE = 200
-CANVAS_WIDTH = int(WORLD_WIDTH * WORLD_SCALE)
-CANVAS_HEIGHT = int(WORLD_HEIGHT * WORLD_SCALE)
+PADDING = 60  # pixels of empty border around the world area
+CANVAS_WIDTH = int(WORLD_WIDTH * WORLD_SCALE) + 2 * PADDING
+CANVAS_HEIGHT = int(WORLD_HEIGHT * WORLD_SCALE) + 2 * PADDING
 
 mapper1 = HomographyMapper()
 mapper2 = HomographyMapper()
@@ -88,8 +89,8 @@ def render_to_world(frame, H):
     """Warp camera frame into world canvas using homography (pixel → world metres)."""
     if H is None or frame is None:
         return np.zeros((CANVAS_HEIGHT, CANVAS_WIDTH, 3), dtype=np.uint8)
-    S = np.array([[WORLD_SCALE, 0, 0],
-                  [0, WORLD_SCALE, 0],
+    S = np.array([[WORLD_SCALE, 0, PADDING],
+                  [0, WORLD_SCALE, PADDING],
                   [0, 0,           1]], dtype=np.float64)
     return cv2.warpPerspective(frame, S @ H, (CANVAS_WIDTH, CANVAS_HEIGHT))
 
