@@ -50,8 +50,9 @@ aruco_params.adaptiveThreshWinSizeMax = 53
 aruco_params.adaptiveThreshWinSizeStep = 4
 aruco_params.minMarkerPerimeterRate = 0.01
 aruco_params.perspectiveRemovePixelPerCell = 8
-aruco_params.minOtsuStdDev = 3.0
+aruco_params.minOtsuStdDev = 1.0
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
+clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 
 # World canvas: 200 px per metre → 1200 × 600 + padding
 WORLD_SCALE = 200
@@ -73,6 +74,7 @@ SNAPSHOT_INTERVAL_SECONDS = float(os.environ.get("SNAPSHOT_INTERVAL_SECONDS", st
 def detect_and_draw(frame):
     """Detect ArUco markers, annotate frame, return (frame, detections)."""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray = clahe.apply(gray)
     corners, ids, _ = detector.detectMarkers(gray)
     detections = []
     if ids is not None:
