@@ -54,6 +54,16 @@ def main():
     cap2.set(cv2.CAP_PROP_AUTOFOCUS, 0)
     cap2.set(cv2.CAP_PROP_FOCUS, 10)
 
+    import subprocess
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "focus_automatic_continuous=0"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "focus_absolute=10"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "sharpness=255"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "zoom_absolute=130"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "focus_automatic_continuous=0"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "focus_absolute=10"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "sharpness=255"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "zoom_absolute=113"], check=False)
+
     detector = ArucoDetector()
     mapper1 = HomographyMapper()
     mapper2 = HomographyMapper()

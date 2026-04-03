@@ -167,10 +167,14 @@ def main():
     cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
 
     # Set focus and sharpness via v4l2-ctl for both cameras
-    for dev in [f"/dev/video{CAMERA_INDEX_1}", f"/dev/video{CAMERA_INDEX_2}"]:
-        subprocess.run(["v4l2-ctl", "-d", dev, "-c", "focus_automatic_continuous=0"], check=False)
-        subprocess.run(["v4l2-ctl", "-d", dev, "-c", "focus_absolute=10"], check=False)
-        subprocess.run(["v4l2-ctl", "-d", dev, "-c", "sharpness=255"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "focus_automatic_continuous=0"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "focus_absolute=10"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "sharpness=255"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "zoom_absolute=130"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "focus_automatic_continuous=0"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "focus_absolute=10"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "sharpness=255"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "zoom_absolute=113"], check=False)
 
     if not cap1.isOpened():
         print(f"Error: Could not open camera {CAMERA_INDEX_1}")

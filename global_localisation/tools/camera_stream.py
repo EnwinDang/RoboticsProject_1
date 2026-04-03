@@ -152,6 +152,16 @@ if __name__ == "__main__":
     if not cap1.isOpened() and not cap2.isOpened():
         raise SystemExit(1)
 
+    import subprocess
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "focus_automatic_continuous=0"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "focus_absolute=10"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "sharpness=255"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "zoom_absolute=130"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "focus_automatic_continuous=0"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "focus_absolute=10"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "sharpness=255"], check=False)
+    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "zoom_absolute=113"], check=False)
+
     t = threading.Thread(target=capture_loop, daemon=True)
     t.start()
 
