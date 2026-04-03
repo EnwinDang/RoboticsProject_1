@@ -10,8 +10,8 @@ CAMERA_INDEX_1 = 4  # left side
 CAMERA_INDEX_2 = 0  # right side
 
 # Camera resolution
-CAMERA_WIDTH = 1280
-CAMERA_HEIGHT = 720
+CAMERA_WIDTH = 1920
+CAMERA_HEIGHT = 1080
 
 # MQTT broker
 MQTT_BROKER = "localhost"
