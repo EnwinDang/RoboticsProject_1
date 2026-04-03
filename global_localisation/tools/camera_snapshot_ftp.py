@@ -46,8 +46,9 @@ from mapping.homography import HomographyMapper
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 aruco_params = aruco.DetectorParameters()
 aruco_params.adaptiveThreshWinSizeMin = 3
-aruco_params.adaptiveThreshWinSizeMax = 23
-aruco_params.adaptiveThreshWinSizeStep = 10
+aruco_params.adaptiveThreshWinSizeMax = 53
+aruco_params.adaptiveThreshWinSizeStep = 4
+aruco_params.minMarkerPerimeterRate = 0.01
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
 # World canvas: 200 px per metre → 1200 × 600 + padding

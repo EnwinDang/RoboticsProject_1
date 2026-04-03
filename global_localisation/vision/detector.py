@@ -8,8 +8,9 @@ class ArucoDetector:
         aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
         parameters = aruco.DetectorParameters()
         parameters.adaptiveThreshWinSizeMin = 3
-        parameters.adaptiveThreshWinSizeMax = 23
-        parameters.adaptiveThreshWinSizeStep = 10
+        parameters.adaptiveThreshWinSizeMax = 53
+        parameters.adaptiveThreshWinSizeStep = 4
+        parameters.minMarkerPerimeterRate = 0.01
         self.detector = aruco.ArucoDetector(aruco_dict, parameters)
 
     def detect(self, frame):
