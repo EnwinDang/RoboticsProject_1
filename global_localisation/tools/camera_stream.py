@@ -103,10 +103,11 @@ def capture_loop():
         world1 = render_to_world(frame1, mapper1.H)
         world2 = render_to_world(frame2, mapper2.H)
 
-        # Composite: camera 2 as base, camera 1 on top where it has content
-        canvas = world2.copy()
-        mask = np.any(world1 > 0, axis=2)
-        canvas[mask] = world1[mask]
+        # Each camera owns its half of the world — hard split at x = WORLD_WIDTH/2
+        seam_x = PADDING + int(WORLD_WIDTH / 2 * WORLD_SCALE)
+        canvas = np.zeros((CANVAS_HEIGHT, CANVAS_WIDTH, 3), dtype=np.uint8)
+        canvas[:, :seam_x] = world2[:, :seam_x]
+        canvas[:, seam_x:] = world1[:, seam_x:]
 
         with frame_lock:
             latest_frame = canvas
