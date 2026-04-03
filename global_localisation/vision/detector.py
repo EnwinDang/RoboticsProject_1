@@ -11,6 +11,8 @@ class ArucoDetector:
         parameters.adaptiveThreshWinSizeMax = 53
         parameters.adaptiveThreshWinSizeStep = 4
         parameters.minMarkerPerimeterRate = 0.01
+        parameters.perspectiveRemovePixelPerCell = 8
+        parameters.minOtsuStdDev = 3.0
         self.detector = aruco.ArucoDetector(aruco_dict, parameters)
 
     def detect(self, frame):

@@ -26,6 +26,8 @@ aruco_params.adaptiveThreshWinSizeMin = 3
 aruco_params.adaptiveThreshWinSizeMax = 53
 aruco_params.adaptiveThreshWinSizeStep = 4
 aruco_params.minMarkerPerimeterRate = 0.01
+aruco_params.perspectiveRemovePixelPerCell = 8
+aruco_params.minOtsuStdDev = 3.0
 detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
 # World canvas: 200 px per metre → 1200 × 600 + padding
