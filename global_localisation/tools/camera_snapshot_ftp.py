@@ -187,7 +187,7 @@ def main():
         raise SystemExit(1)
 
     # Warm up cameras — discard first frames so exposure/focus stabilises
-    for _ in range(30):
+    for _ in range(120):
         cap1.read()
         cap2.read()
 
