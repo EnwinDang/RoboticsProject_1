@@ -1,3 +1,15 @@
+import os
+
+# Load .env from repo root if it exists
+_env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+if os.path.exists(_env_path):
+    with open(_env_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 # World dimensions (meters)
 WORLD_WIDTH = 6.0
 WORLD_HEIGHT = 3.0
@@ -19,11 +31,11 @@ MQTT_PORT = 1883
 MQTT_TOPIC_PREFIX = "city/robots/tag"
 
 # FTP upload defaults for camera snapshots
-FTP_HOST = "ftp.botopiabe.webhosting.be"
-FTP_USER = "dashboard@botopiabe"
-FTP_PASSWORD = "botopia123!"
-FTP_REMOTE_DIR = "/cams"
-FTP_REMOTE_NAME = "camera_snapshot.jpg"
+FTP_HOST = os.getenv("FTP_HOST", "")
+FTP_USER = os.getenv("FTP_USER", "")
+FTP_PASSWORD = os.getenv("FTP_PASSWORD", "")
+FTP_REMOTE_DIR = os.getenv("FTP_REMOTE_DIR", "/cams")
+FTP_REMOTE_NAME = os.getenv("FTP_REMOTE_NAME", "camera_snapshot.jpg")
 SNAPSHOT_INTERVAL_SECONDS = 30
 
 # Tracking thresholds
