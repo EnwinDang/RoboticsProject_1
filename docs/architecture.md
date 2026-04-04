@@ -57,7 +57,7 @@ Robot pose uses:
 # System Hardware
 
 - **Jetson Orin Nano**
-- **2x USB cameras** mounted overhead (`/dev/video4` left, `/dev/video0` right)
+- **2x USB cameras** mounted overhead (`/dev/video4` right, `/dev/video0` left)
 - **Mobile robots with ArUco markers** (IDs 10+)
 - **6 fixed calibration markers** (IDs 0–5)
 

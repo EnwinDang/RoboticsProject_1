@@ -19,7 +19,7 @@ Vision-based localisation system for multiple robots using ArUco markers, OpenCV
 ## Hardware
 
 - Jetson Orin Nano
-- 2x USB cameras (`/dev/video4` left, `/dev/video0` right)
+- 2x USB cameras (`/dev/video4` right, `/dev/video0` left)
 (Voeg hier een foto toe van de usb poorten)
 - Robots with ArUco markers (IDs 10+)
 - 6 fixed calibration markers (IDs 0–5)
@@ -164,6 +164,7 @@ global_localisation/
 │   ├── homography_node.py      # ROS2 homography node
 │   └── robot_detector_node.py  # ROS2 robot detector node
 └── tools/
+    ├── utils.py                    # Shared camera/detection utilities
     ├── aruco_generate.py           # Generate ArUco marker images
     ├── generate_calibration_pdf.py # Generate printable ArUco PDF
     ├── camera_stream.py            # Live top-down world-view stream in browser
