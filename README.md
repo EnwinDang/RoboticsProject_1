@@ -218,3 +218,4 @@ FTP settings are read from `global_localisation/config.py`, with environment var
 - `docs/architecture.md` — system architecture and data flow
 - `docs/calibration.md` — marker layout and homography calibration
 - `docs/mqtt.md` — MQTT interface for other teams
+- `docs/test_checklist.md` — pre-demo test checklist
