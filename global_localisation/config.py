@@ -25,6 +25,18 @@ CAMERA_INDEX_2 = 0  # right side
 CAMERA_WIDTH = 2560
 CAMERA_HEIGHT = 1440
 
+# Camera hardware settings (applied via v4l2-ctl)
+CAMERA_FOCUS = 10
+CAMERA_SHARPNESS = 255
+CAMERA_ZOOM_1 = 130   # camera 4 — calibrated for its mounting position
+CAMERA_ZOOM_2 = 113   # camera 0 — calibrated for its mounting position
+
+# World canvas rendering
+WORLD_SCALE = 200      # pixels per metre
+CANVAS_PADDING = 60    # empty border around the world area (pixels)
+CANVAS_WIDTH = int(WORLD_WIDTH * WORLD_SCALE) + 2 * CANVAS_PADDING
+CANVAS_HEIGHT = int(WORLD_HEIGHT * WORLD_SCALE) + 2 * CANVAS_PADDING
+
 # MQTT broker
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883

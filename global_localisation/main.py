@@ -1,5 +1,7 @@
 import json
+import subprocess
 import threading
+
 import cv2
 import paho.mqtt.client as mqtt
 import rclpy
@@ -8,7 +10,14 @@ from geometry_msgs.msg import Pose2D
 
 from vision.detector import ArucoDetector
 from mapping.homography import HomographyMapper
-from config import CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS, MQTT_BROKER, MQTT_PORT, MQTT_TOPIC_PREFIX, POSITION_THRESHOLD, ANGLE_THRESHOLD, CAMERA_WIDTH, CAMERA_HEIGHT
+from config import (
+    CAMERA_INDEX_1, CAMERA_INDEX_2,
+    CALIBRATION_IDS,
+    MQTT_BROKER, MQTT_PORT, MQTT_TOPIC_PREFIX,
+    POSITION_THRESHOLD, ANGLE_THRESHOLD,
+    CAMERA_WIDTH, CAMERA_HEIGHT,
+    CAMERA_FOCUS, CAMERA_SHARPNESS, CAMERA_ZOOM_1, CAMERA_ZOOM_2,
+)
 
 
 class LocalisationNode(Node):
@@ -23,6 +32,26 @@ def publish_pose(node, robot_id, x, y, theta):
     msg.y = float(y)
     msg.theta = float(theta)
     node.pose_publisher.publish(msg)
+
+
+def open_camera(index):
+    cap = cv2.VideoCapture(index, cv2.CAP_V4L2)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+    cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+    cap.set(cv2.CAP_PROP_FOCUS, CAMERA_FOCUS)
+    cap.set(cv2.CAP_PROP_FPS, 10)
+    return cap
+
+
+def configure_cameras():
+    for idx, zoom in ((CAMERA_INDEX_1, CAMERA_ZOOM_1), (CAMERA_INDEX_2, CAMERA_ZOOM_2)):
+        dev = f"/dev/video{idx}"
+        subprocess.run(["v4l2-ctl", "-d", dev, "-c", "focus_automatic_continuous=0"], check=False)
+        subprocess.run(["v4l2-ctl", "-d", dev, "-c", f"focus_absolute={CAMERA_FOCUS}"], check=False)
+        subprocess.run(["v4l2-ctl", "-d", dev, "-c", f"sharpness={CAMERA_SHARPNESS}"], check=False)
+        subprocess.run(["v4l2-ctl", "-d", dev, "-c", f"zoom_absolute={zoom}"], check=False)
 
 
 def process_camera(cap, detector, mapper, result, key):
@@ -41,28 +70,10 @@ def main():
     rclpy.init()
     node = LocalisationNode()
 
-    cap1 = cv2.VideoCapture(CAMERA_INDEX_1, cv2.CAP_V4L2)
-    cap1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-    cap1.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
-    cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
-    cap1.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-    cap1.set(cv2.CAP_PROP_FOCUS, 10)
-    cap2 = cv2.VideoCapture(CAMERA_INDEX_2, cv2.CAP_V4L2)
-    cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-    cap2.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
-    cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
-    cap2.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-    cap2.set(cv2.CAP_PROP_FOCUS, 10)
+    cap1 = open_camera(CAMERA_INDEX_1)
+    cap2 = open_camera(CAMERA_INDEX_2)
 
-    import subprocess
-    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "focus_automatic_continuous=0"], check=False)
-    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "focus_absolute=10"], check=False)
-    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "sharpness=255"], check=False)
-    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_1}", "-c", "zoom_absolute=130"], check=False)
-    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "focus_automatic_continuous=0"], check=False)
-    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "focus_absolute=10"], check=False)
-    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "sharpness=255"], check=False)
-    subprocess.run(["v4l2-ctl", "-d", f"/dev/video{CAMERA_INDEX_2}", "-c", "zoom_absolute=113"], check=False)
+    configure_cameras()
 
     detector = ArucoDetector()
     mapper1 = HomographyMapper()
