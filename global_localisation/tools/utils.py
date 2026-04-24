@@ -68,11 +68,14 @@ def detect_and_draw(frame):
             marker_id = int(ids[i][0])
             color = (0, 0, 255) if marker_id in CALIBRATION_IDS else (0, 255, 0)
             pts = corner[0].astype(int)
-            cx = int(corner[0][:, 0].mean())
-            cy = int(corner[0][:, 1].mean())
+            cx = float(corner[0][:, 0].mean())
+            cy = float(corner[0][:, 1].mean())
+            dx = corner[0][1][0] - corner[0][0][0]
+            dy = corner[0][1][1] - corner[0][0][1]
+            theta = float(np.arctan2(dy, dx))
             cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=3)
             cv2.putText(frame, str(marker_id), tuple(pts[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-            detections.append({"id": marker_id, "x_pixel": cx, "y_pixel": cy})
+            detections.append({"id": marker_id, "x_pixel": cx, "y_pixel": cy, "theta_image": theta})
     return frame, detections
 
 
