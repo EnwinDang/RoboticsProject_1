@@ -82,8 +82,8 @@ Edit `global_localisation/config.py`:
 WORLD_WIDTH = 6.0        # map width in meters
 WORLD_HEIGHT = 3.0       # map height in meters
 CALIBRATION_IDS = [0, 1, 2, 3, 4, 5]  # fixed marker IDs
-CAMERA_INDEX_1 = 4       # left camera (/dev/video4)
-CAMERA_INDEX_2 = 0       # right camera (/dev/video0)
+CAMERA_INDEX_1 = 4       # right camera (/dev/video4)
+CAMERA_INDEX_2 = 0       # left camera (/dev/video0)
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 MQTT_TOPIC_PREFIX = "city/robots/tag"
@@ -177,15 +177,22 @@ global_localisation/
 
 ### Live camera stream
 
-Renders both cameras as a single top-down world view (1200×600 px + padding) with ArUco detections overlaid. The view is black until enough calibration markers are detected to compute the homography.
+Renders both cameras as a single top-down world view with ArUco detections overlaid. The view is black until enough calibration markers are detected to compute the homography.
+
+The stream runs automatically on boot as a systemd service. To start/stop manually:
 
 ```bash
-source .venv/bin/activate
-cd global_localisation
-python tools/camera_stream.py
+sudo systemctl start camera-stream
+sudo systemctl stop camera-stream
 ```
 
-Then open `http://jetson-dang.local:8080` in your browser.
+Stream is accessible at:
+```
+http://jetson-dang.local:8080
+http://jetson-dang.local:8080/stream   (for other teams integrating via URL)
+```
+
+Open in Safari or Firefox (Chrome blocks MJPEG streams).
 
 > Note: stop the stream before running `main.py` — two processes cannot use the same camera simultaneously.
 
@@ -218,4 +225,3 @@ FTP settings are read from `global_localisation/config.py`, with environment var
 - `docs/architecture.md` — system architecture and data flow
 - `docs/calibration.md` — marker layout and homography calibration
 - `docs/mqtt.md` — MQTT interface for other teams
-- `docs/test_checklist.md` — pre-demo test checklist

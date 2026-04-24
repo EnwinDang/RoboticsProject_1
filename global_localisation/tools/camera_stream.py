@@ -75,6 +75,7 @@ def index():
 
 
 @app.route("/video")
+@app.route("/stream")
 def video():
     return Response(generate_frames(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
