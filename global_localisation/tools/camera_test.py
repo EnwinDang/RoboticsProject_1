@@ -1,13 +1,17 @@
 """
 Live dual-camera test with ArUco detection overlay.
 Run on Jetson: python tools/camera_test.py
-Then open in browser: http://jetson-dang.local:8081
+Then open in browser: http://jetson-dang.local:8082  (or use the IP shown on startup)
 Press Ctrl+C to quit.
 """
+import argparse
+import signal
+import subprocess
 import sys
 import os
 import threading
 import time
+from collections import Counter
 
 import cv2
 import numpy as np
@@ -15,10 +19,13 @@ from flask import Flask, Response
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from config import CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS
-from tools.utils import open_camera, configure_cameras
+from tools.utils import open_camera
 
 DISPLAY_WIDTH = 960
 DISPLAY_HEIGHT = 540
+# ID must appear in this many of the last N frames to be considered stable
+STABLE_WINDOW = 5
+STABLE_THRESHOLD = 3
 
 aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 aruco_params = cv2.aruco.DetectorParameters()
@@ -50,19 +57,23 @@ def detect_and_annotate(frame):
     return frame, detected_ids
 
 
-def draw_hud(frame, label, detected_ids, fps):
-    h, w = frame.shape[:2]
-    cv2.rectangle(frame, (0, 0), (w, 36), (0, 0, 0), -1)
-    cal = sorted(i for i in detected_ids if i in CALIBRATION_IDS)
-    rob = sorted(i for i in detected_ids if i not in CALIBRATION_IDS)
+def draw_hud(frame, label, stable_ids, fps):
+    cv2.rectangle(frame, (0, 0), (frame.shape[1], 36), (0, 0, 0), -1)
+    cal = sorted(i for i in stable_ids if i in CALIBRATION_IDS)
+    rob = sorted(i for i in stable_ids if i not in CALIBRATION_IDS)
     text = f"{label}  cal={cal}  rob={rob}  {fps:.1f}fps"
     cv2.putText(frame, text, (8, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 1)
-    return frame
 
 
-# --- shared state ---
 latest_frame = None
 frame_lock = threading.Lock()
+stop_event = threading.Event()
+
+
+def stable_ids(history):
+    """Return IDs that appeared in at least STABLE_THRESHOLD of the last STABLE_WINDOW frames."""
+    counts = Counter(mid for frame_ids in history for mid in frame_ids)
+    return sorted(mid for mid, n in counts.items() if n >= STABLE_THRESHOLD)
 
 
 def capture_loop():
@@ -76,10 +87,12 @@ def capture_loop():
     if not cap2.isOpened():
         print(f"ERROR: cannot open camera {CAMERA_INDEX_2}")
 
-    prev_ids1, prev_ids2 = [], []
+    history1 = []
+    history2 = []
+    prev_stable1, prev_stable2 = [], []
     t_prev = time.time()
 
-    while True:
+    while not stop_event.is_set():
         ret1, raw1 = cap1.read()
         ret2, raw2 = cap2.read()
 
@@ -94,21 +107,32 @@ def capture_loop():
         if ret1:
             annotated1, ids1 = detect_and_annotate(raw1)
             f1 = cv2.resize(annotated1, (DISPLAY_WIDTH, DISPLAY_HEIGHT))
-            draw_hud(f1, f"CAM{CAMERA_INDEX_1} (left)", ids1, fps)
-
         if ret2:
             annotated2, ids2 = detect_and_annotate(raw2)
             f2 = cv2.resize(annotated2, (DISPLAY_WIDTH, DISPLAY_HEIGHT))
-            draw_hud(f2, f"CAM{CAMERA_INDEX_2} (right)", ids2, fps)
 
-        combined = np.hstack([f2, f1])
+        history1.append(ids1)
+        history2.append(ids2)
+        if len(history1) > STABLE_WINDOW:
+            history1.pop(0)
+        if len(history2) > STABLE_WINDOW:
+            history2.pop(0)
+
+        s1 = stable_ids(history1)
+        s2 = stable_ids(history2)
+
+        draw_hud(f1, f"CAM{CAMERA_INDEX_1} (left)", s1, fps)
+        draw_hud(f2, f"CAM{CAMERA_INDEX_2} (right)", s2, fps)
 
         with frame_lock:
-            latest_frame = combined
+            latest_frame = np.hstack([f2, f1])
 
-        if ids1 != prev_ids1 or ids2 != prev_ids2:
-            print(f"  CAM{CAMERA_INDEX_1}: {sorted(ids1)}   CAM{CAMERA_INDEX_2}: {sorted(ids2)}")
-            prev_ids1, prev_ids2 = ids1[:], ids2[:]
+        if s1 != prev_stable1 or s2 != prev_stable2:
+            print(f"  CAM{CAMERA_INDEX_1}: {s1}   CAM{CAMERA_INDEX_2}: {s2}")
+            prev_stable1, prev_stable2 = s1, s2
+
+    cap1.release()
+    cap2.release()
 
 
 def generate_frames():
@@ -139,13 +163,38 @@ def video():
     return Response(generate_frames(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
 
+def handle_sigint(sig, frame):
+    stop_event.set()
+    os._exit(0)
+
+
+def set_zoom(index, zoom):
+    dev = f"/dev/video{index}"
+    subprocess.run(["v4l2-ctl", "-d", dev, "-c", f"zoom_absolute={zoom}"], check=False)
+
+
 if __name__ == "__main__":
-    configure_cameras(CAMERA_INDEX_1, CAMERA_INDEX_2)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--zoom1", type=int, default=100, help="Zoom for cam4 (default 100 = no zoom, production=130)")
+    parser.add_argument("--zoom2", type=int, default=100, help="Zoom for cam0 (default 100 = no zoom, production=113)")
+    args = parser.parse_args()
+
+    signal.signal(signal.SIGINT, handle_sigint)
+
+    set_zoom(CAMERA_INDEX_1, args.zoom1)
+    set_zoom(CAMERA_INDEX_2, args.zoom2)
+    print(f"Zoom: cam{CAMERA_INDEX_1}={args.zoom1}  cam{CAMERA_INDEX_2}={args.zoom2}")
 
     t = threading.Thread(target=capture_loop, daemon=True)
     t.start()
 
-    print(f"Stream → http://jetson-dang.local:8082")
+    import socket
+    try:
+        ip = socket.gethostbyname(socket.gethostname())
+    except Exception:
+        ip = "127.0.0.1"
+
+    print(f"Stream → http://jetson-dang.local:8082  or  http://{ip}:8082")
     print(f"Legend: RED = calibration (IDs {CALIBRATION_IDS}), GREEN = robot marker")
     print("Ctrl+C to quit.")
     app.run(host="0.0.0.0", port=8082)
