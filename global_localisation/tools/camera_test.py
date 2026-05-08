@@ -145,7 +145,7 @@ if __name__ == "__main__":
     t = threading.Thread(target=capture_loop, daemon=True)
     t.start()
 
-    print(f"Stream → http://jetson-dang.local:8081")
+    print(f"Stream → http://jetson-dang.local:8082")
     print(f"Legend: RED = calibration (IDs {CALIBRATION_IDS}), GREEN = robot marker")
     print("Ctrl+C to quit.")
-    app.run(host="0.0.0.0", port=8081)
+    app.run(host="0.0.0.0", port=8082)
