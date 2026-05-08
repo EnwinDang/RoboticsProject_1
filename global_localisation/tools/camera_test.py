@@ -1,7 +1,8 @@
 """
 Live dual-camera test with ArUco detection overlay.
 Run on Jetson: python tools/camera_test.py
-Press 'q' to quit.
+Then open in browser: http://jetson-dang.local:8081
+Press Ctrl+C to quit.
 """
 import sys
 import os
@@ -10,16 +11,10 @@ import time
 
 import cv2
 import numpy as np
+from flask import Flask, Response
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from config import (
-    CAMERA_INDEX_1,
-    CAMERA_INDEX_2,
-    CALIBRATION_IDS,
-    CAMERA_FOCUS,
-    CAMERA_ZOOM_1,
-    CAMERA_ZOOM_2,
-)
+from config import CAMERA_INDEX_1, CAMERA_INDEX_2, CALIBRATION_IDS
 from tools.utils import open_camera, configure_cameras
 
 DISPLAY_WIDTH = 960
@@ -58,93 +53,99 @@ def detect_and_annotate(frame):
 def draw_hud(frame, label, detected_ids, fps):
     h, w = frame.shape[:2]
     cv2.rectangle(frame, (0, 0), (w, 36), (0, 0, 0), -1)
-    cal = [i for i in detected_ids if i in CALIBRATION_IDS]
-    rob = [i for i in detected_ids if i not in CALIBRATION_IDS]
-    cal_str = f"cal={sorted(cal)}" if cal else "cal=[]"
-    rob_str = f"rob={sorted(rob)}" if rob else "rob=[]"
-    text = f"{label}  {cal_str}  {rob_str}  {fps:.1f}fps"
+    cal = sorted(i for i in detected_ids if i in CALIBRATION_IDS)
+    rob = sorted(i for i in detected_ids if i not in CALIBRATION_IDS)
+    text = f"{label}  cal={cal}  rob={rob}  {fps:.1f}fps"
     cv2.putText(frame, text, (8, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 1)
     return frame
 
 
-class CameraThread:
-    def __init__(self, index, label):
-        self.index = index
-        self.label = label
-        self.cap = open_camera(index)
-        self.frame = np.zeros((DISPLAY_HEIGHT, DISPLAY_WIDTH, 3), dtype=np.uint8)
-        self.ids = []
-        self.fps = 0.0
-        self._lock = threading.Lock()
-        self._running = True
-        self._thread = threading.Thread(target=self._loop, daemon=True)
-        self._thread.start()
-
-    def _loop(self):
-        t_prev = time.time()
-        while self._running:
-            ret, raw = self.cap.read()
-            if not ret:
-                continue
-            annotated, detected_ids = detect_and_annotate(raw)
-            small = cv2.resize(annotated, (DISPLAY_WIDTH, DISPLAY_HEIGHT))
-            t_now = time.time()
-            fps = 1.0 / max(t_now - t_prev, 1e-6)
-            t_prev = t_now
-            draw_hud(small, self.label, detected_ids, fps)
-            with self._lock:
-                self.frame = small
-                self.ids = detected_ids
-                self.fps = fps
-
-    def get(self):
-        with self._lock:
-            return self.frame.copy(), list(self.ids), self.fps
-
-    def stop(self):
-        self._running = False
-        self._thread.join()
-        self.cap.release()
+# --- shared state ---
+latest_frame = None
+frame_lock = threading.Lock()
 
 
-def main():
-    print("Opening cameras...")
-    cam1 = CameraThread(CAMERA_INDEX_1, f"CAM{CAMERA_INDEX_1} (left)")
-    cam2 = CameraThread(CAMERA_INDEX_2, f"CAM{CAMERA_INDEX_2} (right)")
+def capture_loop():
+    global latest_frame
 
-    if not cam1.cap.isOpened():
+    cap1 = open_camera(CAMERA_INDEX_1)
+    cap2 = open_camera(CAMERA_INDEX_2)
+
+    if not cap1.isOpened():
         print(f"ERROR: cannot open camera {CAMERA_INDEX_1}")
-    if not cam2.cap.isOpened():
+    if not cap2.isOpened():
         print(f"ERROR: cannot open camera {CAMERA_INDEX_2}")
-    if not cam1.cap.isOpened() and not cam2.cap.isOpened():
-        raise SystemExit(1)
-
-    configure_cameras(CAMERA_INDEX_1, CAMERA_INDEX_2)
-
-    print("Press 'q' to quit.")
-    print(f"Legend: RED border = calibration marker (IDs {CALIBRATION_IDS}), GREEN = robot marker")
 
     prev_ids1, prev_ids2 = [], []
+    t_prev = time.time()
 
     while True:
-        f1, ids1, fps1 = cam1.get()
-        f2, ids2, fps2 = cam2.get()
+        ret1, raw1 = cap1.read()
+        ret2, raw2 = cap2.read()
 
-        combined = np.hstack([f2, f1])  # right cam on left half, left cam on right half
-        cv2.imshow("Camera Test — both cameras (q to quit)", combined)
+        t_now = time.time()
+        fps = 1.0 / max(t_now - t_prev, 1e-6)
+        t_prev = t_now
 
-        # log to console when detected markers change
+        f1 = np.zeros((DISPLAY_HEIGHT, DISPLAY_WIDTH, 3), dtype=np.uint8)
+        f2 = np.zeros((DISPLAY_HEIGHT, DISPLAY_WIDTH, 3), dtype=np.uint8)
+        ids1, ids2 = [], []
+
+        if ret1:
+            annotated1, ids1 = detect_and_annotate(raw1)
+            f1 = cv2.resize(annotated1, (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+            draw_hud(f1, f"CAM{CAMERA_INDEX_1} (left)", ids1, fps)
+
+        if ret2:
+            annotated2, ids2 = detect_and_annotate(raw2)
+            f2 = cv2.resize(annotated2, (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+            draw_hud(f2, f"CAM{CAMERA_INDEX_2} (right)", ids2, fps)
+
+        combined = np.hstack([f2, f1])
+
+        with frame_lock:
+            latest_frame = combined
+
         if ids1 != prev_ids1 or ids2 != prev_ids2:
             print(f"  CAM{CAMERA_INDEX_1}: {sorted(ids1)}   CAM{CAMERA_INDEX_2}: {sorted(ids2)}")
-            prev_ids1, prev_ids2 = ids1, ids2
+            prev_ids1, prev_ids2 = ids1[:], ids2[:]
 
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
 
-    cam1.stop()
-    cam2.stop()
-    cv2.destroyAllWindows()
+def generate_frames():
+    while True:
+        with frame_lock:
+            frame = latest_frame
+        if frame is None:
+            time.sleep(0.01)
+            continue
+        _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n")
+
+
+app = Flask(__name__)
+
+
+@app.route("/")
+def index():
+    return (
+        '<html><body style="background:#000;margin:0">'
+        '<img src="/video" style="width:100%">'
+        '</body></html>'
+    )
+
+
+@app.route("/video")
+def video():
+    return Response(generate_frames(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
 
 if __name__ == "__main__":
-    main()
+    configure_cameras(CAMERA_INDEX_1, CAMERA_INDEX_2)
+
+    t = threading.Thread(target=capture_loop, daemon=True)
+    t.start()
+
+    print(f"Stream → http://jetson-dang.local:8081")
+    print(f"Legend: RED = calibration (IDs {CALIBRATION_IDS}), GREEN = robot marker")
+    print("Ctrl+C to quit.")
+    app.run(host="0.0.0.0", port=8081)
