@@ -10,7 +10,7 @@ No SSH access is needed. Any device on the **same network** as the Jetson can su
 
 | Setting | Value |
 |---------|-------|
-| Host    | `jetson-dang.local` |
+| Host    | `localhost` (default; override via `.env` or `config.py`) |
 | Port    | `1883` |
 
 ---
@@ -87,7 +87,7 @@ def on_message(client, userdata, msg):
 
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.on_message = on_message
-client.connect("jetson-dang.local", 1883)
+client.connect("localhost", 1883)
 client.subscribe("city/robots/#")
 client.loop_forever()
 ```

@@ -87,8 +87,8 @@ The architecture is designed to:
 Both cameras are rendered into a single top-down canvas (1200×600 px, 200 px/m) using `cv2.warpPerspective`. Each camera owns its half of the canvas — the split is at x = 3m.
 
 ```
-Camera 2 (video0)  │  Camera 1 (video4)
-   x: 0–3m         │     x: 3–6m
+Camera 1 (video4)  │  Camera 2 (video0)
+      x: 0–3m         │     x: 3–6m
 ```
 
 This view is available live via `tools/camera_stream.py` and as periodic FTP snapshots via `tools/camera_snapshot_ftp.py`.

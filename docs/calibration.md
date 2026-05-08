@@ -33,8 +33,8 @@ Two USB cameras are mounted overhead, each covering half of the map.
 
 | Camera | Device       | Coverage              |
 |--------|--------------|-----------------------|
-| Cam 1  | /dev/video4  | Right side (x: 3–6m) |
-| Cam 2  | /dev/video0  | Left side (x: 0–3m)  |
+| Cam 1  | /dev/video4  | Left side (x: 0–3m)  |
+| Cam 2  | /dev/video0  | Right side (x: 3–6m) |
 
 Both cameras are configured in `config.py`:
 
