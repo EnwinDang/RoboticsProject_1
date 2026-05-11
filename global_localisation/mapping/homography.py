@@ -21,8 +21,10 @@ class HomographyMapper:
         pixel_pts = []
         world_pts = []
 
+        seen = set()
         for det in detections:
-            if det["id"] in self.world_points:
+            if det["id"] in self.world_points and det["id"] not in seen:
+                seen.add(det["id"])
                 pixel_pts.append([det["x_pixel"], det["y_pixel"]])
                 world_pts.append(self.world_points[det["id"]])
 

@@ -16,6 +16,7 @@ from config import (
     CALIBRATION_IDS,
     MQTT_BROKER, MQTT_PORT, MQTT_TOPIC_PREFIX,
     POSITION_THRESHOLD, ANGLE_THRESHOLD,
+    WORLD_WIDTH, WORLD_HEIGHT,
 )
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "tools"))
@@ -80,7 +81,9 @@ def main():
 
     active_robots = {}
     missing_count = {}
+    confirm_count = {}  # frames a candidate robot has been seen consecutively
     REMOVE_THRESHOLD = 5
+    CONFIRM_THRESHOLD = 3  # frames before a new robot is published
     frame_count = 0
 
     log.info("Starting detection loop — waiting for calibration markers...")
@@ -132,27 +135,34 @@ def main():
         t1.join(); t2.join()
 
         poses = {}
+        def in_bounds(x, y):
+            return 0 <= x <= WORLD_WIDTH and 0 <= y <= WORLD_HEIGHT
+
         for det in result.get("cam1", []):
             if det["id"] in CALIBRATION_IDS:
                 continue
             world = mapper1.pixel_to_world(det["x_pixel"], det["y_pixel"])
-            if world is not None:
+            if world is not None and in_bounds(world[0], world[1]):
                 poses[det["id"]] = (world[0], world[1], det["theta_image"])
 
         for det in result.get("cam2", []):
             if det["id"] in CALIBRATION_IDS or det["id"] in poses:
                 continue
             world = mapper2.pixel_to_world(det["x_pixel"], det["y_pixel"])
-            if world is not None:
+            if world is not None and in_bounds(world[0], world[1]):
                 poses[det["id"]] = (world[0], world[1], det["theta_image"])
 
         for robot_id, (x_w, y_w, theta) in poses.items():
             x_w, y_w, theta = float(x_w), float(y_w), float(theta)
 
             if robot_id not in active_robots:
+                confirm_count[robot_id] = confirm_count.get(robot_id, 0) + 1
+                if confirm_count[robot_id] < CONFIRM_THRESHOLD:
+                    continue
                 active_robots[robot_id] = (x_w, y_w, theta)
                 event = "ADD"
             else:
+                confirm_count.pop(robot_id, None)
                 old_x, old_y, old_theta = active_robots[robot_id]
                 if (abs(old_x - x_w) > POSITION_THRESHOLD or
                         abs(old_y - y_w) > POSITION_THRESHOLD or
