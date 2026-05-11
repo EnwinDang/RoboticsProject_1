@@ -28,8 +28,8 @@ CAMERA_HEIGHT = 1440
 # Camera hardware settings (applied via v4l2-ctl)
 CAMERA_FOCUS = 10
 CAMERA_SHARPNESS = 255
-CAMERA_ZOOM_1 = 130   # camera 4 — calibrated for its mounting position
-CAMERA_ZOOM_2 = 113   # camera 0 — calibrated for its mounting position
+CAMERA_ZOOM_1 = 100   # camera 4 — fully zoomed out
+CAMERA_ZOOM_2 = 100   # camera 0 — fully zoomed out
 
 # World canvas rendering
 WORLD_SCALE = 200      # pixels per metre
