@@ -82,8 +82,9 @@ def main():
     active_robots = {}
     missing_count = {}
     confirm_count = {}  # frames a candidate robot has been seen consecutively
-    REMOVE_THRESHOLD = 5
-    CONFIRM_THRESHOLD = 3  # frames before a new robot is published
+    REMOVE_THRESHOLD = 15
+    CONFIRM_THRESHOLD = 8  # frames before a new robot is published
+    MAX_JUMP = 0.5         # metres — max position jump between frames
     frame_count = 0
 
     log.info("Starting detection loop — waiting for calibration markers...")
@@ -164,6 +165,10 @@ def main():
             else:
                 confirm_count.pop(robot_id, None)
                 old_x, old_y, old_theta = active_robots[robot_id]
+                dist = ((old_x - x_w) ** 2 + (old_y - y_w) ** 2) ** 0.5
+                if dist > MAX_JUMP:
+                    log.warning(f"ID {robot_id} jumped {dist:.2f}m — ignored")
+                    continue
                 if (abs(old_x - x_w) > POSITION_THRESHOLD or
                         abs(old_y - y_w) > POSITION_THRESHOLD or
                         abs(old_theta - theta) > ANGLE_THRESHOLD):
