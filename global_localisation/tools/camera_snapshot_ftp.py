@@ -126,23 +126,26 @@ def take_snapshot():
     return frame
 
 
-def main():
-    ftp = get_ftp_connection()
-    print(f"Uploading world-view image every {SNAPSHOT_INTERVAL_SECONDS:.0f} seconds as {FTP_REMOTE_NAME}")
+LOCK_FILE = "/tmp/localisation.lock"
 
-    while True:
-        frame = take_snapshot()
-        if frame is not None:
-            try:
-                upload_frame(ftp, frame)
-                print(f"Uploaded {FTP_REMOTE_NAME} to {FTP_HOST}")
-            except Exception as e:
-                print(f"Upload failed: {e}")
-                try:
-                    ftp = get_ftp_connection()
-                except Exception:
-                    pass
-        time.sleep(SNAPSHOT_INTERVAL_SECONDS)
+
+def main():
+    if os.path.exists(LOCK_FILE):
+        print("Localisation is running — skipping FTP snapshot")
+        return
+
+    frame = take_snapshot()
+    if frame is None:
+        print("Could not capture frame — skipping upload")
+        return
+
+    try:
+        ftp = get_ftp_connection()
+        upload_frame(ftp, frame)
+        print(f"Uploaded {FTP_REMOTE_NAME} to {FTP_HOST}")
+        ftp.quit()
+    except Exception as e:
+        print(f"Upload failed: {e}")
 
 
 if __name__ == "__main__":

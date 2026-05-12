@@ -19,7 +19,7 @@ When `main.py` is running, `camera-ftp` is paused — both need the cameras and 
 
 ## How the FTP works
 
-The `camera-ftp` service runs continuously in the background. Every 30 seconds it:
+A cron job runs every minute. When localisation is not active it:
 
 1. Reads both cameras
 2. Detects the calibration markers (IDs 0–5) to compute the homography
@@ -32,7 +32,7 @@ The image is always available at:
 http://botopiabe.webhosting.be/cams/camera_snapshot.jpg
 ```
 
-This image updates every 30 seconds. It shows the full field from above with ArUco markers highlighted. It does **not** show real-time robot positions — it's a static snapshot.
+This image updates every minute. It shows the full field from above with ArUco markers highlighted. It does **not** show real-time robot positions — it's a static snapshot.
 
 To display it with auto-refresh in a browser:
 

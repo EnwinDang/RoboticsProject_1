@@ -43,11 +43,13 @@ class LocalisationNode(Node):
         self.pose_publisher.publish(msg)
 
 
-def main():
-    import subprocess
+LOCK_FILE = "/tmp/localisation.lock"
 
-    log.info("Stopping camera-ftp service...")
-    subprocess.run(["sudo", "systemctl", "stop", "camera-ftp"], check=False)
+
+def main():
+    # Create lock file so FTP cronjob knows not to use cameras
+    with open(LOCK_FILE, "w") as f:
+        f.write(str(os.getpid()))
 
     log.info("Initialising ROS2...")
     rclpy.init()
@@ -101,7 +103,8 @@ def main():
             mqtt_client.disconnect()
         node.destroy_node()
         rclpy.shutdown()
-        subprocess.run(["sudo", "systemctl", "start", "camera-ftp"], check=False)
+        if os.path.exists(LOCK_FILE):
+            os.remove(LOCK_FILE)
         os._exit(0)
 
     signal.signal(signal.SIGINT, handle_sigint)
