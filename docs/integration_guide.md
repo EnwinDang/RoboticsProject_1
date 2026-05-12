@@ -57,6 +57,8 @@ Base URL:
 http://jetson-dang.local:8081
 ```
 
+> **Note:** `jetson-dang.local` resolves via mDNS and works as long as the frontend and Jetson are on the same network. If mDNS is blocked (e.g. some school networks), use the Jetson's IP address directly. The control API must be running: `python tools/control_api.py`
+
 ### Start localisation
 
 ```
@@ -120,6 +122,10 @@ Example message on `city/robots/tag11`:
 | theta | radians | Orientation (0 = facing right) |
 
 Messages are only published when a robot **appears**, **moves significantly** (>5cm or >0.15 rad), or **disappears**.
+
+- A robot must be detected in **8 consecutive frames** before it is published as appeared (filters false positives)
+- A robot must be **missing for 15 consecutive frames** before it is published as disappeared
+- Positions outside the field bounds (0–6m × 0–3m) are ignored automatically
 
 Subscribe from anywhere on the network:
 
