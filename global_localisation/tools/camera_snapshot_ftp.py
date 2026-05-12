@@ -79,8 +79,15 @@ def capture_world_frame(cap1, cap2):
     else:
         frame2, det2 = None, []
 
-    world1 = render_to_world(frame1, mapper1.H)
-    world2 = render_to_world(frame2, mapper2.H)
+    def to_canvas(frame, H):
+        if H is not None:
+            return render_to_world(frame, H)
+        if frame is not None:
+            return cv2.resize(frame, (CANVAS_WIDTH, CANVAS_HEIGHT))
+        return np.zeros((CANVAS_HEIGHT, CANVAS_WIDTH, 3), dtype=np.uint8)
+
+    world1 = to_canvas(frame1, mapper1.H)
+    world2 = to_canvas(frame2, mapper2.H)
     canvas = compose_world_view(world1, world2)
 
     seam_x = CANVAS_WIDTH // 2
