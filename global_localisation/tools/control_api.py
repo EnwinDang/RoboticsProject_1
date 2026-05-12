@@ -1,21 +1,37 @@
 """
 Control API for the frontend team.
-Allows starting/stopping the localisation system remotely via HTTP.
+Allows starting/stopping the localisation system via:
+  - HTTP API on port 8081
+  - MQTT topic city/control on HiveMQ cloud
 
-Run as a service on the Jetson — always on.
 Endpoints:
-  POST /start   → stop FTP service, start main.py
-  POST /stop    → stop main.py, restart FTP service
+  POST /start   → start main.py
+  POST /stop    → stop main.py
   GET  /status  → returns current state
+
+MQTT:
+  Subscribe: city/control
+  Payload: {"action": "start"} or {"action": "stop"}
 """
 
-import subprocess
+import json
 import os
 import signal
+import subprocess
+import threading
+
+import paho.mqtt.client as mqtt
 from flask import Flask, jsonify
 
-app = Flask(__name__)
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import MQTT_BROKER, MQTT_PORT, MQTT_TLS, MQTT_USERNAME, MQTT_PASSWORD
 
+VENV_PYTHON = "/home/jetson/RoboticsProject_1/global_localisation/.venv/bin/python"
+WORK_DIR = "/home/jetson/RoboticsProject_1/global_localisation"
+CONTROL_TOPIC = "city/control"
+
+app = Flask(__name__)
 main_process = None
 
 
@@ -23,42 +39,40 @@ def is_running():
     return main_process is not None and main_process.poll() is None
 
 
-@app.route("/start", methods=["POST"])
-def start():
+def do_start():
     global main_process
-
     if is_running():
-        return jsonify({"status": "already_running"}), 200
-
-    subprocess.run(["sudo", "systemctl", "stop", "camera-ftp"], check=False)
-
+        return "already_running"
     env = os.environ.copy()
     env["PYTHONPATH"] = "/opt/ros/humble/lib/python3.10/site-packages"
-
     main_process = subprocess.Popen(
-        ["/home/jetson/RoboticsProject_1/global_localisation/.venv/bin/python", "main.py"],
-        cwd="/home/jetson/RoboticsProject_1/global_localisation",
+        [VENV_PYTHON, "main.py"],
+        cwd=WORK_DIR,
         env=env,
     )
+    return "started"
 
-    return jsonify({"status": "started"}), 200
+
+def do_stop():
+    global main_process
+    if not is_running():
+        return "not_running"
+    main_process.send_signal(signal.SIGINT)
+    main_process.wait(timeout=10)
+    main_process = None
+    return "stopped"
+
+
+# --- HTTP API ---
+
+@app.route("/start", methods=["POST"])
+def start():
+    return jsonify({"status": do_start()}), 200
 
 
 @app.route("/stop", methods=["POST"])
 def stop():
-    global main_process
-
-    if not is_running():
-        subprocess.run(["sudo", "systemctl", "start", "camera-ftp"], check=False)
-        return jsonify({"status": "not_running"}), 200
-
-    main_process.send_signal(signal.SIGINT)
-    main_process.wait(timeout=10)
-    main_process = None
-
-    subprocess.run(["sudo", "systemctl", "start", "camera-ftp"], check=False)
-
-    return jsonify({"status": "stopped"}), 200
+    return jsonify({"status": do_stop()}), 200
 
 
 @app.route("/status", methods=["GET"])
@@ -69,6 +83,43 @@ def status():
     }), 200
 
 
+# --- MQTT control ---
+
+def on_message(client, userdata, msg):
+    try:
+        payload = json.loads(msg.payload.decode())
+        action = payload.get("action")
+        if action == "start":
+            result = do_start()
+            print(f"[MQTT] start → {result}")
+        elif action == "stop":
+            result = do_stop()
+            print(f"[MQTT] stop → {result}")
+        else:
+            print(f"[MQTT] unknown action: {action}")
+    except Exception as e:
+        print(f"[MQTT] error: {e}")
+
+
+def start_mqtt_listener():
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    if MQTT_TLS:
+        client.tls_set()
+    client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+    client.on_message = on_message
+    try:
+        client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
+        client.subscribe(CONTROL_TOPIC)
+        print(f"[MQTT] Listening on {CONTROL_TOPIC}")
+        client.loop_forever()
+    except Exception as e:
+        print(f"[MQTT] Connection failed: {e}")
+
+
 if __name__ == "__main__":
+    t = threading.Thread(target=start_mqtt_listener, daemon=True)
+    t.start()
+
     print("Control API → http://0.0.0.0:8081")
+    print(f"MQTT control → {MQTT_BROKER} topic: {CONTROL_TOPIC}")
     app.run(host="0.0.0.0", port=8081)

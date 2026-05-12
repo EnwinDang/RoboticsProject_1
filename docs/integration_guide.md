@@ -48,57 +48,61 @@ To display it with auto-refresh in a browser:
 
 ---
 
-## Control API
+## Control
 
-The Jetson exposes a HTTP API on port **8081** to start/stop the localisation system.
+The localisation system can be started/stopped via **HTTP API** or **MQTT**. The control API must be running: `python tools/control_api.py`
+
+---
+
+### Option 1 — HTTP API
 
 Base URL:
 ```
 http://jetson-dang.local:8081
 ```
 
-> **Note:** `jetson-dang.local` resolves via mDNS and works as long as the frontend and Jetson are on the same network. If mDNS is blocked (e.g. some school networks), use the Jetson's IP address directly. The control API must be running: `python tools/control_api.py`
+> **Note:** If mDNS is blocked, use the Jetson's IP address directly.
 
-### Start localisation
-
+#### Start
 ```
 POST /start
 ```
+**Response:** `{"status": "started"}`
 
-Creates a lock file and starts robot detection + MQTT publishing. The FTP cronjob detects the lock and skips until localisation stops.
-
-**Response:**
-```json
-{"status": "started"}
-```
-
-### Stop localisation
-
+#### Stop
 ```
 POST /stop
 ```
+**Response:** `{"status": "stopped"}`
 
-Stops robot detection and removes the lock file. The FTP cronjob resumes automatically on the next minute.
-
-**Response:**
-```json
-{"status": "stopped"}
-```
-
-### Get status
-
+#### Status
 ```
 GET /status
 ```
-
 **Response:**
 ```json
 {"localisation": "running", "ftp": "stopped"}
 ```
-or
+
+---
+
+### Option 2 — MQTT control topic
+
+Publish to `city/control` on HiveMQ:
+
 ```json
-{"localisation": "stopped", "ftp": "running"}
+{"action": "start"}
 ```
+```json
+{"action": "stop"}
+```
+
+```javascript
+client.publish('city/control', JSON.stringify({ action: 'start' }))
+client.publish('city/control', JSON.stringify({ action: 'stop' }))
+```
+
+Both options start/stop the same `main.py` process.
 
 ---
 
@@ -148,8 +152,8 @@ client.on('message', (topic, message) => {
 
 1. Page loads → call `GET /status` to show current state
 2. Show FTP image while localisation is stopped
-3. User clicks **Start** → call `POST /start` → listen to MQTT for live robot positions
-4. User clicks **Stop** → call `POST /stop` → FTP image resumes updating
+3. User clicks **Start** → `POST /start` or publish `{"action":"start"}` to `city/control` → listen to MQTT for live robot positions
+4. User clicks **Stop** → `POST /stop` or publish `{"action":"stop"}` to `city/control` → FTP image resumes updating
 5. Poll `GET /status` every few seconds to keep the UI in sync
 
 ---
