@@ -14,10 +14,7 @@ The Jetson runs three services:
 | FTP cronjob | Captures cameras, renders top-down world view, uploads to FTP every minute | When localisation is stopped |
 | `main.py` | Detects robots, publishes positions via MQTT | Only when started via control |
 
-`control_api.py` must always be running. Start it on the Jetson:
-```bash
-cd ~/RoboticsProject_1/global_localisation && source .venv/bin/activate && python tools/control_api.py
-```
+`control_api.py` runs as a systemd service and starts automatically on boot. No manual action required.
 
 When `main.py` is running, it creates a lock file — the FTP cronjob detects this and skips. When `main.py` stops, the lock file is removed and FTP uploads resume automatically.
 
@@ -48,7 +45,7 @@ To display it with auto-refresh in a browser:
   setInterval(() => {
     document.getElementById('map').src =
       'http://botopiabe.webhosting.be/cams/camera_snapshot.jpg?t=' + Date.now();
-  }, 5000);
+  }, 60000); // image updates every minute
 </script>
 ```
 
@@ -69,15 +66,22 @@ http://jetson-dang.local:8081
 
 > **Note:** If mDNS is blocked, use the Jetson's IP address directly.
 
+All write endpoints require an API key header:
+```
+X-API-Key: <contact team for key>
+```
+
 #### Start
 ```
 POST /start
+X-API-Key: <your-api-key>
 ```
 **Response:** `{"status": "started"}`
 
 #### Stop
 ```
 POST /stop
+X-API-Key: <your-api-key>
 ```
 **Response:** `{"status": "stopped"}`
 

@@ -50,44 +50,28 @@ For debugging tools (camera stream):
 pip install flask
 ```
 
-### 3. Install and start MQTT broker
+### 3. Configure environment variables
 
-```bash
-sudo apt install mosquitto mosquitto-clients
-sudo systemctl start mosquitto
-```
-
-To allow other devices on the network to connect, add to `/etc/mosquitto/mosquitto.conf`:
+Create a `.env` file in the repo root:
 
 ```
-listener 1883 0.0.0.0
-allow_anonymous true
+FTP_HOST=ftp.botopiabe.webhosting.be
+FTP_USER=dashboard@botopiabe
+FTP_PASSWORD=...
+FTP_REMOTE_DIR=/cams
+FTP_REMOTE_NAME=camera_snapshot.jpg
+MQTT_USERNAME=Robot
+MQTT_PASSWORD=...
+API_KEY=...
 ```
 
-Then restart:
-
-```bash
-sudo systemctl restart mosquitto
-```
-
-> Mosquitto is enabled on boot — no need to start it manually after the initial setup.
+Contact the team for the credentials.
 
 ---
 
 ## Configuration
 
-Edit `global_localisation/config.py`:
-
-```python
-WORLD_WIDTH = 6.0        # map width in meters
-WORLD_HEIGHT = 3.0       # map height in meters
-CALIBRATION_IDS = [0, 1, 2, 3, 4, 5]  # fixed marker IDs
-CAMERA_INDEX_1 = 4       # right camera (/dev/video4)
-CAMERA_INDEX_2 = 0       # left camera (/dev/video0)
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
-MQTT_TOPIC_PREFIX = "city/robots/tag"
-```
+Edit `global_localisation/config.py` for world dimensions, camera indices, and zoom. MQTT broker and credentials are loaded from `.env`.
 
 ---
 
@@ -104,20 +88,15 @@ source ~/.bashrc
 
 ### Run
 
+`main.py` is started/stopped via the control API — do not run it directly.
+
+Start the control API (runs as systemd service automatically on boot):
+
 ```bash
-cd ~/RoboticsProject_1/global_localisation
-python main.py
+sudo systemctl start control-api
 ```
 
-### Expected terminal output
-
-```
-[ADD]    ID 10 → World: (1.20, 0.80), theta: 0.12
-[UPDATE] ID 10 → World: (1.45, 0.95), theta: 0.15
-[REMOVE] ID 10
-```
-
-Only prints when a robot appears, moves significantly (>5cm or >0.15 rad), or disappears.
+Start/stop localisation via HTTP or MQTT — see `docs/integration_guide.md`.
 
 ---
 
@@ -140,13 +119,13 @@ ros2 topic echo /robots/pose
 
 ## MQTT
 
-Robot positions are published to `city/robots/tag{id}` as JSON:
+Robot positions are published to HiveMQ cloud on topic `city/robots/tag{id}`:
 
 ```json
 {"x": 2.14, "y": 1.39, "theta": 1.57}
 ```
 
-Any device on the same network can subscribe — see `docs/mqtt.md` for details.
+See `docs/integration_guide.md` for broker details and credentials.
 
 ---
 
@@ -154,69 +133,41 @@ Any device on the same network can subscribe — see `docs/mqtt.md` for details.
 
 ```
 global_localisation/
-├── main.py                     # Entry point (cameras + detection + ROS2 + MQTT)
+├── main.py                     # Robot detection + MQTT publishing
 ├── config.py                   # All configuration
-├── vision/
-│   ├── detector.py             # ArucoDetector class
-│   └── camera_node.py          # ROS2 camera node
 ├── mapping/
-│   ├── homography.py           # HomographyMapper class
-│   ├── homography_node.py      # ROS2 homography node
-│   └── robot_detector_node.py  # ROS2 robot detector node
+│   └── homography.py           # HomographyMapper class
+├── vision/
+│   └── detector.py             # ArucoDetector class
 └── tools/
     ├── utils.py                    # Shared camera/detection utilities
+    ├── control_api.py              # HTTP + MQTT control API (always-on service)
+    ├── camera_snapshot_ftp.py      # One-shot FTP upload (run via cronjob every minute)
+    ├── camera_test.py              # Live dual-camera stream for debugging
     ├── aruco_generate.py           # Generate ArUco marker images
-    ├── generate_calibration_pdf.py # Generate printable ArUco PDF
-    ├── camera_stream.py            # Live top-down world-view stream in browser
-    └── camera_snapshot_ftp.py      # Upload top-down world-view image to FTP every 30s
+    └── generate_calibration_pdf.py # Generate printable ArUco PDF
 ```
 
 ---
 
 ## Debugging
 
-### Live camera stream
-
-Renders both cameras as a single top-down world view with ArUco detections overlaid. The view is black until enough calibration markers are detected to compute the homography.
-
-The stream runs automatically on boot as a systemd service. To start/stop manually:
+### Live camera stream (debug)
 
 ```bash
-sudo systemctl start camera-stream
-sudo systemctl stop camera-stream
+cd global_localisation && python tools/camera_test.py
 ```
 
-Stream is accessible at:
+Open SSH tunnel on Mac: `ssh -L 8082:localhost:8082 jetson@<ip>`
+Then open `http://localhost:8082` in browser.
+
+### FTP snapshot
+
+A cronjob runs `camera_snapshot_ftp.py` every minute. It uploads a top-down world-view image to:
 ```
-http://jetson-dang.local:8080
-http://jetson-dang.local:8080/stream   (for other teams integrating via URL)
+http://botopiabe.webhosting.be/cams/camera_snapshot.jpg
 ```
-
-Open in Safari or Firefox (Chrome blocks MJPEG streams).
-
-> Note: stop the stream before running `main.py` — two processes cannot use the same camera simultaneously.
-
-### Single camera mode
-
-To run with only one camera, set the unused camera index to a non-existent value in `config.py`:
-
-```python
-CAMERA_INDEX_1 = 0    # active camera
-CAMERA_INDEX_2 = 99   # disabled
-```
-
-At least 4 calibration markers (IDs 0–5) must be visible to the active camera for homography to work.
-
-### FTP snapshot upload
-
-To capture both cameras as one top-down world-view image and upload it every 30 seconds, run:
-
-```bash
-python3 global_localisation/tools/camera_snapshot_ftp.py
-```
-
-The script uploads one file repeatedly and overwrites the previous image on the FTP server.
-FTP settings are read from `global_localisation/config.py`, with environment variables as optional overrides.
+The cronjob automatically skips when `main.py` is running (lock file mechanism).
 
 ---
 
