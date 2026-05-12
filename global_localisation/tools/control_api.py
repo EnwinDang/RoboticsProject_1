@@ -43,12 +43,9 @@ def do_start():
     global main_process
     if is_running():
         return "already_running"
-    env = os.environ.copy()
-    env["PYTHONPATH"] = "/opt/ros/humble/lib/python3.10/site-packages"
     main_process = subprocess.Popen(
-        [VENV_PYTHON, "main.py"],
+        ["bash", "-c", f"source /opt/ros/humble/setup.bash && {VENV_PYTHON} main.py"],
         cwd=WORK_DIR,
-        env=env,
     )
     return "started"
 
