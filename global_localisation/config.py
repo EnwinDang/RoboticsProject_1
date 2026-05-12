@@ -38,8 +38,11 @@ CANVAS_WIDTH = int(WORLD_WIDTH * WORLD_SCALE) + 2 * CANVAS_PADDING
 CANVAS_HEIGHT = int(WORLD_HEIGHT * WORLD_SCALE) + 2 * CANVAS_PADDING
 
 # MQTT broker
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
+MQTT_BROKER = "e26688c7fd4c4f238a2e04f8d12199af.s1.eu.hivemq.cloud"
+MQTT_PORT = 8883
+MQTT_TLS = True
+MQTT_USERNAME = "Robot"
+MQTT_PASSWORD = "Password123."
 MQTT_TOPIC_PREFIX = "city/robots/tag"
 
 # FTP upload defaults for camera snapshots

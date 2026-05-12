@@ -101,10 +101,10 @@ def upload_frame(ftp, frame):
     ftp.storbinary(f"STOR {FTP_REMOTE_NAME}", buffer)
 
 
-def main():
+def take_snapshot():
+    """Open cameras, capture one frame, close cameras. Returns world canvas."""
     cap1 = open_camera(CAMERA_INDEX_1)
     cap2 = open_camera(CAMERA_INDEX_2)
-
     configure_cameras(CAMERA_INDEX_1, CAMERA_INDEX_2)
 
     if not cap1.isOpened():
@@ -112,29 +112,37 @@ def main():
     if not cap2.isOpened():
         print(f"Error: Could not open camera {CAMERA_INDEX_2}")
     if not cap1.isOpened() and not cap2.isOpened():
-        raise SystemExit(1)
+        cap1.release()
+        cap2.release()
+        return None
 
-    # Warm up cameras and build homography during warmup
-    print("Warming up cameras and computing homography...")
-    for _ in range(120):
+    # Read a few frames to let the camera stabilise, then capture
+    for _ in range(10):
         capture_world_frame(cap1, cap2)
 
+    frame = capture_world_frame(cap1, cap2)
+    cap1.release()
+    cap2.release()
+    return frame
+
+
+def main():
     ftp = get_ftp_connection()
     print(f"Uploading world-view image every {SNAPSHOT_INTERVAL_SECONDS:.0f} seconds as {FTP_REMOTE_NAME}")
 
-    try:
-        while True:
-            frame = capture_world_frame(cap1, cap2)
-            upload_frame(ftp, frame)
-            print(f"Uploaded {FTP_REMOTE_NAME} to {FTP_HOST}")
-            time.sleep(SNAPSHOT_INTERVAL_SECONDS)
-    finally:
-        cap1.release()
-        cap2.release()
-        try:
-            ftp.quit()
-        except Exception:
-            pass
+    while True:
+        frame = take_snapshot()
+        if frame is not None:
+            try:
+                upload_frame(ftp, frame)
+                print(f"Uploaded {FTP_REMOTE_NAME} to {FTP_HOST}")
+            except Exception as e:
+                print(f"Upload failed: {e}")
+                try:
+                    ftp = get_ftp_connection()
+                except Exception:
+                    pass
+        time.sleep(SNAPSHOT_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":

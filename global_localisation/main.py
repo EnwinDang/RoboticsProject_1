@@ -14,7 +14,7 @@ from mapping.homography import HomographyMapper
 from config import (
     CAMERA_INDEX_1, CAMERA_INDEX_2,
     CALIBRATION_IDS,
-    MQTT_BROKER, MQTT_PORT, MQTT_TOPIC_PREFIX,
+    MQTT_BROKER, MQTT_PORT, MQTT_TLS, MQTT_USERNAME, MQTT_PASSWORD, MQTT_TOPIC_PREFIX,
     POSITION_THRESHOLD, ANGLE_THRESHOLD,
     WORLD_WIDTH, WORLD_HEIGHT,
 )
@@ -72,7 +72,10 @@ def main():
     mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     mqtt_connected = False
     try:
-        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=5)
+        if MQTT_TLS:
+            mqtt_client.tls_set()
+        mqtt_client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
         mqtt_client.loop_start()
         mqtt_connected = True
         log.info("MQTT connected")
