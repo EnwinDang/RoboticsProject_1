@@ -6,12 +6,18 @@ This document explains how the system works and how the frontend team can integr
 
 ## How it works
 
-The Jetson runs two services:
+The Jetson runs three services:
 
 | Service | What it does | When |
 |---------|-------------|------|
-| FTP cronjob | Captures both cameras, renders top-down world view, uploads image to FTP every minute | When localisation is stopped |
-| `main.py` | Detects robots, publishes positions via MQTT | Only when started via API |
+| `control_api.py` | HTTP + MQTT control interface to start/stop localisation | **Always on** |
+| FTP cronjob | Captures cameras, renders top-down world view, uploads to FTP every minute | When localisation is stopped |
+| `main.py` | Detects robots, publishes positions via MQTT | Only when started via control |
+
+`control_api.py` must always be running. Start it on the Jetson:
+```bash
+cd ~/RoboticsProject_1/global_localisation && source .venv/bin/activate && python tools/control_api.py
+```
 
 When `main.py` is running, it creates a lock file — the FTP cronjob detects this and skips. When `main.py` stops, the lock file is removed and FTP uploads resume automatically.
 
@@ -86,21 +92,17 @@ GET /status
 
 ---
 
-### Option 2 — MQTT control topic
+### Option 2 — MQTT control topic (recommended)
 
-Publish to `city/control` on HiveMQ:
-
-```json
-{"action": "start"}
-```
-```json
-{"action": "stop"}
-```
+Use the same HiveMQ connection you already have for robot positions. Publish to `city/control`:
 
 ```javascript
+// Same client as robot position subscription
 client.publish('city/control', JSON.stringify({ action: 'start' }))
 client.publish('city/control', JSON.stringify({ action: 'stop' }))
 ```
+
+No extra credentials needed — HiveMQ username/password is the authentication.
 
 Both options start/stop the same `main.py` process.
 

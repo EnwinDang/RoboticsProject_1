@@ -21,7 +21,7 @@ import subprocess
 import threading
 
 import paho.mqtt.client as mqtt
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,6 +30,7 @@ from config import MQTT_BROKER, MQTT_PORT, MQTT_TLS, MQTT_USERNAME, MQTT_PASSWOR
 VENV_PYTHON = "/home/jetson/RoboticsProject_1/global_localisation/.venv/bin/python"
 WORK_DIR = "/home/jetson/RoboticsProject_1/global_localisation"
 CONTROL_TOPIC = "city/control"
+API_KEY = os.getenv("API_KEY", "")
 
 app = Flask(__name__)
 main_process = None
@@ -37,6 +38,12 @@ main_process = None
 
 def is_running():
     return main_process is not None and main_process.poll() is None
+
+
+def authorized():
+    if not API_KEY:
+        return True  # no key set → open access
+    return request.headers.get("X-API-Key") == API_KEY
 
 
 def do_start():
@@ -64,11 +71,15 @@ def do_stop():
 
 @app.route("/start", methods=["POST"])
 def start():
+    if not authorized():
+        return jsonify({"error": "unauthorized"}), 401
     return jsonify({"status": do_start()}), 200
 
 
 @app.route("/stop", methods=["POST"])
 def stop():
+    if not authorized():
+        return jsonify({"error": "unauthorized"}), 401
     return jsonify({"status": do_stop()}), 200
 
 
