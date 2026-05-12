@@ -20,6 +20,7 @@ import time
 from ftplib import FTP, FTP_TLS
 
 import cv2
+import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from config import (
@@ -33,6 +34,7 @@ from config import (
     SNAPSHOT_INTERVAL_SECONDS as CONFIG_SNAPSHOT_INTERVAL_SECONDS,
 )
 from mapping.homography import HomographyMapper
+from config import CANVAS_WIDTH, CANVAS_HEIGHT
 sys.path.insert(0, os.path.dirname(__file__))
 from utils import open_camera, configure_cameras, detect_and_draw, render_to_world, compose_world_view
 
@@ -47,6 +49,15 @@ SNAPSHOT_INTERVAL_SECONDS = float(
 
 mapper1 = HomographyMapper()
 mapper2 = HomographyMapper()
+
+
+def add_warning(canvas, cam_label, x):
+    """Draw a calibration warning on the canvas at horizontal position x."""
+    cv2.rectangle(canvas, (x + 10, 10), (x + CANVAS_WIDTH // 2 - 10, 60), (0, 0, 180), -1)
+    cv2.putText(canvas, f"{cam_label}: calibration", (x + 20, 32),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+    cv2.putText(canvas, "not detected", (x + 20, 52),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
 
 def capture_world_frame(cap1, cap2):
@@ -70,7 +81,15 @@ def capture_world_frame(cap1, cap2):
 
     world1 = render_to_world(frame1, mapper1.H)
     world2 = render_to_world(frame2, mapper2.H)
-    return compose_world_view(world1, world2)
+    canvas = compose_world_view(world1, world2)
+
+    seam_x = CANVAS_WIDTH // 2
+    if mapper2.H is None:
+        add_warning(canvas, "CAM0", 0)
+    if mapper1.H is None:
+        add_warning(canvas, "CAM4", seam_x)
+
+    return canvas, mapper1.H is not None, mapper2.H is not None
 
 
 def get_ftp_connection():
@@ -101,8 +120,13 @@ def upload_frame(ftp, frame):
     ftp.storbinary(f"STOR {FTP_REMOTE_NAME}", buffer)
 
 
+LAST_GOOD_FRAME = None
+
+
 def take_snapshot():
     """Open cameras, capture one frame, close cameras. Returns world canvas."""
+    global LAST_GOOD_FRAME
+
     cap1 = open_camera(CAMERA_INDEX_1)
     cap2 = open_camera(CAMERA_INDEX_2)
     configure_cameras(CAMERA_INDEX_1, CAMERA_INDEX_2)
@@ -114,16 +138,20 @@ def take_snapshot():
     if not cap1.isOpened() and not cap2.isOpened():
         cap1.release()
         cap2.release()
-        return None
+        return LAST_GOOD_FRAME  # return last good frame if cameras unavailable
 
     # Read a few frames to let the camera stabilise, then capture
     for _ in range(10):
         capture_world_frame(cap1, cap2)
 
-    frame = capture_world_frame(cap1, cap2)
+    canvas, h1_ok, h2_ok = capture_world_frame(cap1, cap2)
     cap1.release()
     cap2.release()
-    return frame
+
+    if h1_ok and h2_ok:
+        LAST_GOOD_FRAME = canvas  # save as fallback for next time
+
+    return canvas
 
 
 LOCK_FILE = "/tmp/localisation.lock"

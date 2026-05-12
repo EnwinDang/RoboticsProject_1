@@ -10,10 +10,10 @@ The Jetson runs two services:
 
 | Service | What it does | When |
 |---------|-------------|------|
-| `camera-ftp` | Captures both cameras, renders top-down world view, uploads image to FTP every 30s | Always on |
-| `main.py` | Detects robots, publishes positions via ROS2 + MQTT | Only when started via API |
+| FTP cronjob | Captures both cameras, renders top-down world view, uploads image to FTP every minute | When localisation is stopped |
+| `main.py` | Detects robots, publishes positions via MQTT | Only when started via API |
 
-When `main.py` is running, `camera-ftp` is paused — both need the cameras and can't run at the same time. When `main.py` stops, `camera-ftp` resumes automatically.
+When `main.py` is running, it creates a lock file — the FTP cronjob detects this and skips. When `main.py` stops, the lock file is removed and FTP uploads resume automatically.
 
 ---
 
@@ -65,7 +65,7 @@ http://jetson-dang.local:8081
 POST /start
 ```
 
-Stops the FTP service and starts robot detection + ROS2 + MQTT publishing.
+Creates a lock file and starts robot detection + MQTT publishing. The FTP cronjob detects the lock and skips until localisation stops.
 
 **Response:**
 ```json
@@ -78,7 +78,7 @@ Stops the FTP service and starts robot detection + ROS2 + MQTT publishing.
 POST /stop
 ```
 
-Stops robot detection and restarts the FTP service.
+Stops robot detection and removes the lock file. The FTP cronjob resumes automatically on the next minute.
 
 **Response:**
 ```json
@@ -127,10 +127,13 @@ Messages are only published when a robot **appears**, **moves significantly** (>
 - A robot must be **missing for 15 consecutive frames** before it is published as disappeared
 - Positions outside the field bounds (0–6m × 0–3m) are ignored automatically
 
-Subscribe from anywhere on the network:
+Subscribe via HiveMQ cloud:
 
 ```javascript
-const client = mqtt.connect('mqtt://jetson-dang.local:1883')
+const client = mqtt.connect('mqtts://e26688c7fd4c4f238a2e04f8d12199af.s1.eu.hivemq.cloud:8883', {
+  username: 'Robot',
+  password: 'Password123.'
+})
 client.subscribe('city/robots/#')
 client.on('message', (topic, message) => {
   const id = topic.split('tag')[1]
