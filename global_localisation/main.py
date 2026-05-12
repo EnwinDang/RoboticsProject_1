@@ -173,7 +173,9 @@ def main():
                 old_x, old_y, old_theta = active_robots[robot_id]
                 dist = ((old_x - x_w) ** 2 + (old_y - y_w) ** 2) ** 0.5
                 if dist > MAX_JUMP:
-                    log.warning(f"ID {robot_id} jumped {dist:.2f}m — ignored")
+                    log.warning(f"ID {robot_id} jumped {dist:.2f}m — resetting position")
+                    del active_robots[robot_id]
+                    confirm_count[robot_id] = 1
                     continue
                 if (abs(old_x - x_w) > POSITION_THRESHOLD or
                         abs(old_y - y_w) > POSITION_THRESHOLD or
