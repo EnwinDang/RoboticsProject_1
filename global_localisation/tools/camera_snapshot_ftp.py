@@ -147,8 +147,8 @@ def take_snapshot():
         cap2.release()
         return LAST_GOOD_FRAME  # return last good frame if cameras unavailable
 
-    # Read a few frames to let the camera stabilise, then capture
-    for _ in range(10):
+    # Read frames to let the camera stabilise and compute homography
+    for _ in range(30):
         capture_world_frame(cap1, cap2)
 
     canvas, h1_ok, h2_ok = capture_world_frame(cap1, cap2)
