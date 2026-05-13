@@ -31,7 +31,6 @@ from config import (
     FTP_REMOTE_DIR as CONFIG_FTP_REMOTE_DIR,
     FTP_REMOTE_NAME as CONFIG_FTP_REMOTE_NAME,
     FTP_USER as CONFIG_FTP_USER,
-    SNAPSHOT_INTERVAL_SECONDS as CONFIG_SNAPSHOT_INTERVAL_SECONDS,
 )
 from mapping.homography import HomographyMapper
 from config import CANVAS_WIDTH, CANVAS_HEIGHT
@@ -43,9 +42,6 @@ FTP_USER = os.environ.get("FTP_USER", CONFIG_FTP_USER)
 FTP_PASSWORD = os.environ.get("FTP_PASSWORD", CONFIG_FTP_PASSWORD)
 FTP_REMOTE_DIR = os.environ.get("FTP_REMOTE_DIR", CONFIG_FTP_REMOTE_DIR)
 FTP_REMOTE_NAME = os.environ.get("FTP_REMOTE_NAME", CONFIG_FTP_REMOTE_NAME)
-SNAPSHOT_INTERVAL_SECONDS = float(
-    os.environ.get("SNAPSHOT_INTERVAL_SECONDS", str(CONFIG_SNAPSHOT_INTERVAL_SECONDS))
-)
 
 mapper1 = HomographyMapper()
 mapper2 = HomographyMapper()

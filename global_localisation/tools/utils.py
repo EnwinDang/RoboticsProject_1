@@ -1,5 +1,5 @@
 """
-Shared utilities for camera tools (camera_stream.py, camera_snapshot_ftp.py).
+Shared utilities for camera tools (camera_snapshot_ftp.py, camera_test.py).
 """
 import subprocess
 import sys

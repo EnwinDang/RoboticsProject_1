@@ -1,99 +1,88 @@
 # MQTT Interface
 
-The localisation system broadcasts robot positions over MQTT in real time.
-
-No SSH access is needed. Any device on the **same network** as the Jetson can subscribe.
+The localisation system publishes robot positions to a HiveMQ cloud broker in real time.
 
 ---
 
-# Broker
+## Broker
 
-| Setting | Value |
-|---------|-------|
-| Host    | `localhost` (default; override via `.env` or `config.py`) |
-| Port    | `1883` |
+| Setting  | Value |
+|----------|-------|
+| Host     | `e26688c7fd4c4f238a2e04f8d12199af.s1.eu.hivemq.cloud` |
+| Port     | `8883` (TLS required) |
+| Username | `Robot` |
+| Password | contact the team |
 
 ---
 
-# Topics
+## Topics
 
-One topic per robot, based on its ArUco marker ID:
+| Topic | Direction | Description |
+|-------|-----------|-------------|
+| `city/robots/tag{id}` | Jetson → frontend | Robot position updates |
+| `city/control` | Frontend → Jetson | Start/stop localisation |
 
-```
-city/robots/tag10
-city/robots/tag11
-city/robots/tag12
-...
-```
-
-To subscribe to all robots at once use the wildcard:
-
+Subscribe to all robots:
 ```
 city/robots/#
 ```
 
 ---
 
-# Message Format
+## Robot Position Messages
 
-Messages are published as JSON:
+Published as JSON when a robot appears, moves significantly (>5cm or >0.15 rad), or disappears:
 
 ```json
 {"x": 2.14, "y": 1.39, "theta": 1.57}
 ```
 
-| Field   | Type  | Unit    | Description                        |
-|---------|-------|---------|------------------------------------|
-| `x`     | float | meters  | Position along the width of the map  |
-| `y`     | float | meters  | Position along the height of the map |
-| `theta` | float | radians | Orientation (0 = facing right)     |
+| Field   | Unit    | Description                    |
+|---------|---------|--------------------------------|
+| `x`     | meters  | Position along width (0–6m)    |
+| `y`     | meters  | Position along height (0–3m)   |
+| `theta` | radians | Orientation (0 = facing right) |
 
 ---
 
-# Map Coordinate System
+## Control Messages
+
+Publish to `city/control` to start or stop localisation:
+
+```json
+{"action": "start"}
+{"action": "stop"}
+```
+
+---
+
+## Example Subscriber (JavaScript)
+
+```javascript
+const client = mqtt.connect('mqtts://e26688c7fd4c4f238a2e04f8d12199af.s1.eu.hivemq.cloud:8883', {
+  username: 'Robot',
+  password: '<password>'
+})
+client.subscribe('city/robots/#')
+client.on('message', (topic, message) => {
+  const id = topic.split('tag')[1]
+  const pos = JSON.parse(message)
+  console.log(`Robot ${id}: x=${pos.x}, y=${pos.y}, theta=${pos.theta}`)
+})
+```
+
+---
+
+## Map Coordinate System
 
 ```
-(0,0)─────────────────────(6,0)
-  │                          │
-  │         6m × 3m          │
-  │                          │
-(0,3)─────────────────────(6,3)
+(0,0) ──────────────────── (6,0)
+  │                            │
+  │         6m × 3m            │
+  │                            │
+(0,3) ──────────────────── (6,3)
 ```
 
-- Origin `(0, 0)` is the **top-left** corner of the map
+- Origin `(0,0)` = top-left corner
 - `x` increases to the right
 - `y` increases downward
-
----
-
-# Example Subscriber (Python)
-
-Install the MQTT client library:
-
-```bash
-pip install paho-mqtt
-```
-
-Subscribe to all robots:
-
-```python
-import paho.mqtt.client as mqtt
-import json
-
-def on_message(client, userdata, msg):
-    data = json.loads(msg.payload)
-    robot_id = msg.topic.split("tag")[-1]
-    print(f"Robot {robot_id} → x={data['x']}, y={data['y']}, theta={data['theta']}")
-
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-client.on_message = on_message
-client.connect("localhost", 1883)
-client.subscribe("city/robots/#")
-client.loop_forever()
-```
-
----
-
-# Update Rate
-
-Robot positions are published event-driven — only when a robot appears, moves significantly (>5cm or >0.15 rad), or disappears.
