@@ -45,6 +45,9 @@ When you send a start command:
 1. `main.py` shuts down and removes the lock file
 2. The next cron job run (within a minute) resumes FTP uploads automatically
 
+### Auto-stop
+If no robot moves for **5 minutes**, `main.py` shuts down automatically — even if nobody pressed stop. This prevents the cameras from staying on indefinitely when the session is over. FTP uploads resume within a minute after auto-stop.
+
 ---
 
 ## What happens when the Jetson goes down

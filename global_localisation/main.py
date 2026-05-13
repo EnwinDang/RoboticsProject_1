@@ -90,7 +90,9 @@ def main():
     REMOVE_THRESHOLD = 15
     CONFIRM_THRESHOLD = 8  # frames before a new robot is published
     MAX_JUMP = 0.5         # metres — max position jump between frames
+    IDLE_TIMEOUT = 5 * 60  # seconds — auto-stop if no movement detected
     frame_count = 0
+    last_movement_time = time.time()
 
     log.info("Starting detection loop — waiting for calibration markers...")
 
@@ -182,6 +184,7 @@ def main():
                         abs(old_theta - theta) > ANGLE_THRESHOLD):
                     active_robots[robot_id] = (x_w, y_w, theta)
                     event = "UPDATE"
+                    last_movement_time = time.time()
                 else:
                     continue
 
@@ -205,6 +208,10 @@ def main():
 
         for robot_id in set(poses):
             missing_count.pop(robot_id, None)
+
+        if time.time() - last_movement_time > IDLE_TIMEOUT:
+            log.info(f"No movement detected for {IDLE_TIMEOUT // 60} minutes — shutting down automatically")
+            handle_sigint(None, None)
 
 
 if __name__ == "__main__":
