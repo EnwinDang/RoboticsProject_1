@@ -2,7 +2,7 @@
 
 Vision-based localisation system for multiple robots using overhead cameras, ArUco markers, OpenCV, ROS2, and MQTT.
 
-> **How it works:** Two overhead cameras film the field. ArUco calibration markers (IDs 0–5) are placed at fixed positions to compute a homography — a pixel-to-world coordinate mapping. Robots carry their own ArUco markers (IDs 10+). Their positions are detected in real time and published to a cloud MQTT broker. See [`docs/architecture.md`](docs/architecture.md) for the full system design.
+> **How it works:** Two overhead cameras film the field. ArUco calibration markers (IDs 0–5) are placed at fixed positions to compute a homography — a pixel-to-world coordinate mapping. Robots carry their own ArUco markers (IDs 10+). Their positions are detected in real time and published to a cloud MQTT broker. See [`docs/architecture.md`](docs/architecture.md) for the architectual design.
 
 ---
 
@@ -13,7 +13,7 @@ Vision-based localisation system for multiple robots using overhead cameras, ArU
 - Robots with ArUco markers (IDs 10+)
 - 6 fixed calibration markers (IDs 0–5) placed at the field corners and midpoints
 
-![Field overview](docs/image.png)
+![Field overview](docs/RobotMap.png)
 
 > See [`docs/calibration.md`](docs/calibration.md) for exact marker positions and placement instructions.
 
@@ -194,8 +194,6 @@ RoboticsProject_1/
     ├── config.py                   # All configuration
     ├── mapping/
     │   └── homography.py           # Pixel → world coordinate mapping
-    ├── vision/
-    │   └── detector.py             # ArUco detector
     └── tools/
         ├── control_api.py              # HTTP + MQTT control API (systemd service)
         ├── camera_snapshot_ftp.py      # FTP upload (cronjob, runs every minute)
@@ -210,27 +208,31 @@ RoboticsProject_1/
 ## Debugging
 
 ### View control API logs
+Stream live logs from the control API service — useful to see start/stop events and errors:
 ```bash
 sudo journalctl -u control-api -f
 ```
 
 ### View FTP upload logs
+Shows a history of FTP uploads and whether the cronjob skipped (localisation was running):
 ```bash
 cat /tmp/ftp.log
 ```
 
 ### Live camera stream
+Opens a browser-accessible stream showing both camera feeds with ArUco detections overlaid. Useful for checking camera angles and marker visibility:
 ```bash
 cd global_localisation && python tools/camera_test.py
 ```
-SSH tunnel on Mac: `ssh -L 8082:localhost:8082 jetson@<ip>`
-Open `http://localhost:8082` in browser.
+SSH tunnel on Mac (required — Jetson has no display): `ssh -L 8082:localhost:8082 jetson@<ip>`
+Then open `http://localhost:8082` in browser.
 
 ### Check system status
+Check if the control API is running, what cronjobs are active, and whether localisation is currently running:
 ```bash
-sudo systemctl status control-api
-crontab -l
-cat /tmp/localisation.lock  # exists only when main.py is running
+sudo systemctl status control-api   # is the control API up?
+crontab -l                          # shows the FTP cronjob
+cat /tmp/localisation.lock          # exists only when main.py is running
 ```
 
 ---
@@ -239,6 +241,6 @@ cat /tmp/localisation.lock  # exists only when main.py is running
 
 | Doc | Description |
 |-----|-------------|
-| [`docs/system_guide.md`](docs/system_guide.md) | Frontend integration — HTTP API, MQTT, FTP |
+| [`docs/system_guide.md`](docs/system_guide.md) | Full system guide — operational flow, HTTP API, MQTT, FTP |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture and data flow |
 | [`docs/calibration.md`](docs/calibration.md) | Calibration marker positions and setup |
