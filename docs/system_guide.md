@@ -71,6 +71,8 @@ http://botopiabe.webhosting.be/cams/camera_snapshot.jpg
 
 It updates every minute when localisation is stopped. It shows a top-down view of the field with ArUco markers highlighted. It does **not** show real-time robot positions.
 
+![FTP homography snapshot](HomographyMap.png)
+
 > **Note:** If calibration markers are not detected (e.g. camera out of position), the image will show the raw camera feed with a red warning banner instead of a black screen.
 
 To display it with auto-refresh:
