@@ -64,7 +64,7 @@ These markers must remain **fixed and visible** to the camera at all times.
   [1]────────────[3]────────────[5]
 (0,3)          (3,3)          (6,3)
 ```
-![alt text](image.png)
+![Homography map output](HomographyMap.png)
 
 World coordinates per marker:
 
