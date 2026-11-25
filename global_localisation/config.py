@@ -38,7 +38,7 @@ CANVAS_WIDTH = int(WORLD_WIDTH * WORLD_SCALE) + 2 * CANVAS_PADDING
 CANVAS_HEIGHT = int(WORLD_HEIGHT * WORLD_SCALE) + 2 * CANVAS_PADDING
 
 # MQTT broker
-MQTT_BROKER = os.getenv("MQTT_BROKER", "e26688c7fd4c4f238a2e04f8d12199af.s1.eu.hivemq.cloud")
+MQTT_BROKER = os.getenv("MQTT_BROKER", "")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "8883"))
 MQTT_TLS = os.getenv("MQTT_TLS", "true").lower() == "true"
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")

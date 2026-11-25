@@ -8,7 +8,7 @@ The localisation system publishes robot positions to a HiveMQ cloud broker in re
 
 | Setting  | Value |
 |----------|-------|
-| Host     | `e26688c7fd4c4f238a2e04f8d12199af.s1.eu.hivemq.cloud` |
+| Host     | `<your-broker>.hivemq.cloud` |
 | Port     | `8883` (TLS required) |
 | Username | `Robot` |
 | Password | contact the team |
@@ -59,7 +59,7 @@ Publish to `city/control` to start or stop localisation:
 ## Example Subscriber (JavaScript)
 
 ```javascript
-const client = mqtt.connect('mqtts://e26688c7fd4c4f238a2e04f8d12199af.s1.eu.hivemq.cloud:8883', {
+const client = mqtt.connect('mqtts://<your-broker>.hivemq.cloud:8883', {
   username: 'Robot',
   password: '<password>'
 })

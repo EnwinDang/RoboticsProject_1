@@ -54,12 +54,12 @@ pip install opencv-contrib-python numpy paho-mqtt flask
 Create a `.env` file in the repo root (`RoboticsProject_1/.env`):
 
 ```
-FTP_HOST=ftp.botopiabe.webhosting.be
-FTP_USER=dashboard@botopiabe
+FTP_HOST=your_ftp_host
+FTP_USER=your_ftp_user
 FTP_PASSWORD=your_ftp_password_here
 FTP_REMOTE_DIR=/cams
 FTP_REMOTE_NAME=camera_snapshot.jpg
-MQTT_USERNAME=Robot
+MQTT_USERNAME=your_mqtt_user
 MQTT_PASSWORD=your_mqtt_password_here
 API_KEY=your_api_key_here
 ```
@@ -147,8 +147,8 @@ curl http://jetson-dang.local:8081/status
 
 **Via MQTT:**
 ```bash
-mosquitto_pub -h e26688c7fd4c4f238a2e04f8d12199af.s1.eu.hivemq.cloud -p 8883 \
-  --insecure -u Robot -P "<password>" \
+mosquitto_pub -h <your-broker>.hivemq.cloud -p 8883 \
+  -u <user> -P "<password>" \
   -t "city/control" -m '{"action": "start"}'
 ```
 
@@ -177,7 +177,7 @@ Field dimensions: 6m × 3m. Each camera needs at least 4 markers visible to comp
 Robot positions published to HiveMQ cloud:
 
 - **Topic:** `city/robots/tag{id}`
-- **Broker:** `e26688c7fd4c4f238a2e04f8d12199af.s1.eu.hivemq.cloud:8883` (TLS)
+- **Broker:** `<your-broker>.hivemq.cloud:8883` (TLS)
 - **Payload:** `{"x": 2.14, "y": 1.39, "theta": 1.57}`
 
 > See [`docs/system_guide.md`](docs/system_guide.md) for full MQTT reference including control topic and example code.

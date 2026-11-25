@@ -180,7 +180,7 @@ Messages are only published when a robot **appears**, **moves significantly** (>
 Subscribe via HiveMQ cloud:
 
 ```javascript
-const client = mqtt.connect('mqtts://e26688c7fd4c4f238a2e04f8d12199af.s1.eu.hivemq.cloud:8883', {
+const client = mqtt.connect('mqtts://<your-broker>.hivemq.cloud:8883', {
   username: 'Robot',
   password: 'your_mqtt_password_here'
 })
